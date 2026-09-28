@@ -1,9 +1,33 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Task } from '../types'
-import { getGlobalTasks, updateTask, deleteTask } from '../services/workspaceService'
+import { Task, TaskPriority, Subtask, TaskActivityItem } from '../types'
+import { getGlobalTasks, updateTask, deleteTask, createTask } from '../services/workspaceService'
 import { TaskFormModal } from '../components/workspace/TaskFormModal'
 import { DeleteTaskDialog } from '../components/workspace/DeleteTaskDialog'
-import { CheckSquare, Calendar, Edit2, Trash2, CheckCircle2, Circle, AlertCircle, Building2 } from 'lucide-react'
+import { parseTaskContent, serializeTaskDescription } from '../utils/taskHelper'
+import { 
+  CheckSquare, 
+  Calendar, 
+  Edit2, 
+  Trash2, 
+  CheckCircle2, 
+  Circle, 
+  AlertCircle, 
+  Building2,
+  ChevronDown, 
+  Clock, 
+  Sparkles, 
+  Copy, 
+  Check,
+  Flag,
+  ListTodo,
+  FileText,
+  Phone,
+  Mail,
+  MessageSquare,
+  ArrowRightCircle,
+  History,
+  Info
+} from 'lucide-react'
 import { useRealtimeSync } from '../contexts/RealtimeSyncContext'
 import { supabase } from '../supabase/client'
 
@@ -15,7 +39,7 @@ const taskSortFn = (a: Task, b: Task) => {
   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
 };
 
-type GlobalTask = Task & { customer?: { name: string } };
+type GlobalTask = Task & { customer?: { name: string; phone?: string; email?: string; company?: string } };
 
 export const GlobalTasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<GlobalTask[]>([])
@@ -23,17 +47,23 @@ export const GlobalTasksPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const { subscribe } = useRealtimeSync()
 
-  // Edit / Delete states
+  // Expand & Copy & Subtask inputs
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null)
+  const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({})
+
+  // Edit / Delete / Follow-up states
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<GlobalTask | null>(null)
+  const [followUpTitle, setFollowUpTitle] = useState<string>('')
 
   const loadTasks = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await getGlobalTasks()
-      setTasks(data)
+      setTasks(data as GlobalTask[])
     } catch (err: any) {
       setError(err?.message || 'Unable to retrieve tasks pipeline.')
     } finally {
@@ -67,10 +97,9 @@ export const GlobalTasksPage: React.FC = () => {
         });
       } else if (event.eventType === 'INSERT') {
         try {
-          // Fetch task details with joined customer name to display on global page
           const { data, error: fetchErr } = await supabase
             .from('tasks')
-            .select('*, customer:customers(name)')
+            .select('*, customer:customers(name, phone, email, company)')
             .eq('id', event.newRecord.id)
             .single();
 
@@ -78,7 +107,7 @@ export const GlobalTasksPage: React.FC = () => {
             setTasks((prev) => {
               const exists = prev.some((t) => t.id === data.id);
               if (exists) return prev;
-              return [...prev, data].sort(taskSortFn);
+              return [...prev, data as GlobalTask].sort(taskSortFn);
             });
           }
         } catch (e) {
@@ -110,6 +139,14 @@ export const GlobalTasksPage: React.FC = () => {
 
   const handleEditClick = (task: GlobalTask) => {
     setSelectedTask(task)
+    setFollowUpTitle('')
+    setIsFormOpen(true)
+  }
+
+  const handleCreateFollowUp = (task: GlobalTask) => {
+    const parsed = parseTaskContent(task)
+    setSelectedTask(null)
+    setFollowUpTitle(`Follow up on: ${parsed.title}`)
     setIsFormOpen(true)
   }
 
@@ -118,11 +155,25 @@ export const GlobalTasksPage: React.FC = () => {
     setIsDeleteOpen(true)
   }
 
-  const handleFormSubmit = async (description: string, dueDate?: string) => {
-    if (!selectedTask) return
+  const handleFormSubmit = async (description: string, dueDate?: string, status?: 'pending' | 'in_progress' | 'done') => {
+    const dbStatus = status === 'done' ? 'done' : 'pending'
     try {
-      const updated = await updateTask(selectedTask.id, { description, due_date: dueDate || undefined })
-      setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, ...updated } : t))
+      if (selectedTask) {
+        const updated = await updateTask(selectedTask.id, { description, due_date: dueDate || undefined, status: dbStatus })
+        setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, ...updated } : t))
+      } else if (followUpTitle) {
+        // Create follow-up under first available customer or user
+        const targetCustomerId = tasks[0]?.customer_id
+        if (targetCustomerId) {
+          const created = await createTask({
+            customer_id: targetCustomerId,
+            description,
+            due_date: dueDate || undefined,
+            status: dbStatus
+          })
+          setTasks(prev => [...prev, created as GlobalTask].sort(taskSortFn))
+        }
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to update task details.')
       throw err;
@@ -140,6 +191,17 @@ export const GlobalTasksPage: React.FC = () => {
     }
   }
 
+  const toggleExpand = (taskId: string) => {
+    setExpandedTaskId(prev => (prev === taskId ? null : taskId))
+  }
+
+  const handleCopyDescription = (e: React.MouseEvent, text: string, taskId: string) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    setCopiedTaskId(taskId)
+    setTimeout(() => setCopiedTaskId(null), 2000)
+  }
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return ''
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -149,12 +211,233 @@ export const GlobalTasksPage: React.FC = () => {
     })
   }
 
+  const formatDetailedDate = (dateStr?: string) => {
+    if (!dateStr) return 'No due date scheduled'
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  }
+
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return null
+    const date = new Date(dateStr)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  }
+
+  const getRelativeDueText = (dateStr?: string) => {
+    if (!dateStr) return null
+    const due = new Date(dateStr)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    due.setHours(0, 0, 0, 0)
+    const diffTime = due.getTime() - today.getTime()
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+    if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) > 1 ? 's' : ''}`
+    if (diffDays === 0) return 'Due today'
+    if (diffDays === 1) return 'Due tomorrow'
+    return `Due in ${diffDays} days`
+  }
+
   const isOverdue = (task: GlobalTask) => {
     if (task.status === 'done' || !task.due_date) return false
     const due = new Date(task.due_date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return due < today
+  }
+
+  // Subtask Toggle Handler
+  const handleToggleSubtask = async (task: GlobalTask, subtaskId: string) => {
+    const parsed = parseTaskContent(task)
+    const updatedSubtasks = parsed.subtasks.map(st => {
+      if (st.id === subtaskId) {
+        return { ...st, completed: !st.completed }
+      }
+      return st
+    })
+
+    const targetSubtask = parsed.subtasks.find(st => st.id === subtaskId)
+    const nowIso = new Date().toISOString()
+    const updatedActivity: TaskActivityItem[] = [
+      ...parsed.activity,
+      {
+        id: `act-${Date.now()}`,
+        type: 'subtask_completed',
+        description: targetSubtask && !targetSubtask.completed 
+          ? `Completed action: "${targetSubtask.title}"`
+          : `Re-opened action: "${targetSubtask?.title || ''}"`,
+        timestamp: nowIso
+      }
+    ]
+
+    const newDescription = serializeTaskDescription({
+      title: parsed.title,
+      details: parsed.details,
+      priority: parsed.priority,
+      taskStatus: parsed.taskStatus,
+      subtasks: updatedSubtasks,
+      keyContext: parsed.keyContext,
+      recommendation: parsed.recommendation,
+      activity: updatedActivity
+    })
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, description: newDescription } : t))
+    await updateTask(task.id, { description: newDescription })
+  }
+
+  // Add Custom Subtask
+  const handleAddSubtask = async (task: GlobalTask) => {
+    const text = (newSubtaskInputs[task.id] || '').trim()
+    if (!text) return
+
+    const parsed = parseTaskContent(task)
+    const newSubtask: Subtask = {
+      id: `sub-${Date.now()}`,
+      title: text,
+      completed: false
+    }
+
+    const updatedSubtasks = [...parsed.subtasks, newSubtask]
+    const updatedActivity: TaskActivityItem[] = [
+      ...parsed.activity,
+      {
+        id: `act-${Date.now()}`,
+        type: 'edited',
+        description: `Added action: "${text}"`,
+        timestamp: new Date().toISOString()
+      }
+    ]
+
+    const newDescription = serializeTaskDescription({
+      title: parsed.title,
+      details: parsed.details,
+      priority: parsed.priority,
+      taskStatus: parsed.taskStatus,
+      subtasks: updatedSubtasks,
+      keyContext: parsed.keyContext,
+      recommendation: parsed.recommendation,
+      activity: updatedActivity
+    })
+
+    setNewSubtaskInputs(prev => ({ ...prev, [task.id]: '' }))
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, description: newDescription } : t))
+    await updateTask(task.id, { description: newDescription })
+  }
+
+  // Delete Subtask
+  const handleDeleteSubtask = async (task: GlobalTask, subtaskId: string) => {
+    const parsed = parseTaskContent(task)
+    const updatedSubtasks = parsed.subtasks.filter(st => st.id !== subtaskId)
+
+    const newDescription = serializeTaskDescription({
+      title: parsed.title,
+      details: parsed.details,
+      priority: parsed.priority,
+      taskStatus: parsed.taskStatus,
+      subtasks: updatedSubtasks,
+      keyContext: parsed.keyContext,
+      recommendation: parsed.recommendation,
+      activity: parsed.activity
+    })
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, description: newDescription } : t))
+    await updateTask(task.id, { description: newDescription })
+  }
+
+  // Direct Priority Switcher
+  const handleChangePriority = async (task: GlobalTask, newPriority: TaskPriority) => {
+    const parsed = parseTaskContent(task)
+    const updatedActivity: TaskActivityItem[] = [
+      ...parsed.activity,
+      {
+        id: `act-${Date.now()}`,
+        type: 'edited',
+        description: `Priority changed to ${newPriority.toUpperCase()}`,
+        timestamp: new Date().toISOString()
+      }
+    ]
+
+    const newDescription = serializeTaskDescription({
+      title: parsed.title,
+      details: parsed.details,
+      priority: newPriority,
+      taskStatus: parsed.taskStatus,
+      subtasks: parsed.subtasks,
+      keyContext: parsed.keyContext,
+      recommendation: parsed.recommendation,
+      activity: updatedActivity
+    })
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, description: newDescription } : t))
+    await updateTask(task.id, { description: newDescription })
+  }
+
+  // Direct Status Switcher
+  const handleChangeStatus = async (task: GlobalTask, newStatus: 'pending' | 'in_progress' | 'done') => {
+    const parsed = parseTaskContent(task)
+    const updatedActivity: TaskActivityItem[] = [
+      ...parsed.activity,
+      {
+        id: `act-${Date.now()}`,
+        type: 'status_changed',
+        description: `Status changed to ${newStatus.replace('_', ' ').toUpperCase()}`,
+        timestamp: new Date().toISOString()
+      }
+    ]
+
+    const newDbStatus: 'pending' | 'done' = newStatus === 'done' ? 'done' : 'pending'
+
+    const newDescription = serializeTaskDescription({
+      title: parsed.title,
+      details: parsed.details,
+      priority: parsed.priority,
+      taskStatus: newStatus,
+      subtasks: parsed.subtasks,
+      keyContext: parsed.keyContext,
+      recommendation: parsed.recommendation,
+      activity: updatedActivity
+    })
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, description: newDescription, status: newDbStatus } : t))
+    await updateTask(task.id, { description: newDescription, status: newDbStatus })
+  }
+
+  const renderPriorityPill = (priority: TaskPriority) => {
+    switch (priority) {
+      case 'high':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            <span>High</span>
+          </span>
+        )
+      case 'low':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Low</span>
+          </span>
+        )
+      case 'medium':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>Medium</span>
+          </span>
+        )
+    }
   }
 
   if (loading) {
@@ -175,9 +458,11 @@ export const GlobalTasksPage: React.FC = () => {
     <div className="space-y-6 flex flex-col h-full animate-fadeIn font-sans select-none">
       
       {/* 1. Header */}
-      <div className="shrink-0">
-        <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Tasks Pipeline</h1>
-        <p className="text-sm text-slate-400 mt-1">Review and manage tasks across all client accounts</p>
+      <div className="shrink-0 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Tasks Pipeline</h1>
+          <p className="text-sm text-slate-400 mt-1">Review and manage actionable commitments across all client accounts</p>
+        </div>
       </div>
 
       {/* 2. Error Message */}
@@ -203,7 +488,7 @@ export const GlobalTasksPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Section A: Pending Tasks */}
+            {/* Section A: Active Tasks */}
             {pendingTasks.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
@@ -212,56 +497,480 @@ export const GlobalTasksPage: React.FC = () => {
                 <div className="bg-slate-900/20 border border-slate-800/60 rounded-xl divide-y divide-slate-800/60 overflow-hidden">
                   {pendingTasks.map(task => {
                     const overdue = isOverdue(task)
+                    const isExpanded = expandedTaskId === task.id
+                    const relativeDue = getRelativeDueText(task.due_date)
+                    const content = parseTaskContent(task)
+                    const completedSubtasksCount = content.subtasks.filter(st => st.completed).length
+
                     return (
-                      <div key={task.id} className="flex items-start justify-between p-4 hover:bg-slate-900/25 transition duration-150 group gap-4">
-                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                          <button
-                            onClick={() => handleToggleComplete(task)}
-                            className="mt-0.5 text-slate-550 hover:text-brand-400 transition shrink-0"
-                          >
-                            <Circle className="w-4.5 h-4.5 hover:scale-105 transition-transform" />
-                          </button>
-                          <div className="min-w-0 space-y-1.5">
-                            <p className="text-sm font-medium text-slate-200 leading-snug break-words">
-                              {task.description}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-3">
-                              {/* Customer tag */}
-                              {task.customer?.name && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                                  <Building2 className="w-3.5 h-3.5 text-slate-600" />
-                                  <span>{task.customer.name}</span>
-                                </span>
-                              )}
-                              {/* Due Date */}
-                              {task.due_date && (
-                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide ${
-                                  overdue ? 'text-red-400 font-bold' : 'text-slate-500'
-                                }`}>
-                                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                  <span>Due: {formatDate(task.due_date)}</span>
-                                  {overdue && <span className="bg-red-500/10 border border-red-500/20 text-red-400 text-[8px] font-extrabold px-1 rounded ml-1">Overdue</span>}
-                                </span>
-                              )}
+                      <div 
+                        key={task.id} 
+                        className={`transition-colors duration-150 ${
+                          isExpanded ? 'bg-slate-900/40' : 'hover:bg-slate-900/25'
+                        }`}
+                      >
+                        {/* Main Row */}
+                        <div
+                          onClick={() => toggleExpand(task.id)}
+                          className="flex items-start justify-between p-4 cursor-pointer group gap-4"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              toggleExpand(task.id)
+                            }
+                          }}
+                          title="Click to view full task details"
+                        >
+                          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleToggleComplete(task)
+                              }}
+                              className="mt-0.5 text-slate-550 hover:text-brand-400 transition shrink-0"
+                              title="Mark Completed"
+                            >
+                              <Circle className="w-4.5 h-4.5 hover:scale-105 transition-transform" />
+                            </button>
+                            <div className="min-w-0 space-y-1.5 flex-1">
+                              <p className={`text-sm leading-snug break-words transition-all font-medium ${
+                                isExpanded ? 'text-brand-300 font-semibold' : 'text-slate-200 group-hover:text-white'
+                              }`}>
+                                {content.title}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {/* Customer tag */}
+                                {task.customer?.name && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                                    <Building2 className="w-3.5 h-3.5 text-slate-600" />
+                                    <span>{task.customer.name}</span>
+                                  </span>
+                                )}
+
+                                {/* Priority Badge */}
+                                {renderPriorityPill(content.priority)}
+
+                                {/* Status badge if In Progress */}
+                                {content.taskStatus === 'in_progress' && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">
+                                    <span>In Progress</span>
+                                  </span>
+                                )}
+
+                                {/* Due Date */}
+                                {task.due_date && (
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide ${
+                                    overdue ? 'text-red-400 font-bold' : 'text-slate-500'
+                                  }`}>
+                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Due: {formatDate(task.due_date)}</span>
+                                    {overdue && (
+                                      <span className="bg-red-500/15 border border-red-500/25 text-red-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded ml-1">
+                                        Overdue
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+
+                                {/* Subtasks summary pill */}
+                                {content.subtasks.length > 0 && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/60 border border-slate-750 px-1.5 py-0.5 rounded">
+                                    <ListTodo className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                                    <span>{completedSubtasksCount}/{content.subtasks.length} actions</span>
+                                  </span>
+                                )}
+
+                                {/* AI Call Task badge */}
+                                {task.call_id && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand-400/80 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">
+                                    <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                    <span>AI Call Task</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Right actions + Expand Chevron */}
+                          <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditClick(task)
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              title="Edit Task"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteClick(task)
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              title="Delete Task"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div 
+                              className={`p-1 text-slate-500 group-hover:text-slate-300 rounded transition-transform duration-200 ${
+                                isExpanded ? 'rotate-180 text-brand-400' : ''
+                              }`}
+                              title={isExpanded ? 'Collapse' : 'Expand Details'}
+                            >
+                              <ChevronDown className="w-4 h-4" />
                             </div>
                           </div>
                         </div>
-                        
-                        {/* Hover actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
-                          <button
-                            onClick={() => handleEditClick(task)}
-                            className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(task)}
-                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+
+                        {/* Expanded Detailed Description Panel */}
+                        {isExpanded && (
+                          <div className="px-5 pb-5 pt-2 border-t border-slate-800/60 bg-slate-950/30 space-y-4 animate-fadeIn">
+                            
+                            {/* Priority & Status Controls Bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/60 border border-slate-800/80 rounded-lg">
+                              {/* Priority Switcher */}
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <Flag className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">Priority:</span>
+                                <div className="flex items-center gap-1">
+                                  {(['low', 'medium', 'high'] as TaskPriority[]).map((p) => (
+                                    <button
+                                      key={p}
+                                      onClick={() => handleChangePriority(task, p)}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition border ${
+                                        content.priority === p
+                                          ? p === 'high' 
+                                            ? 'bg-red-500/20 text-red-300 border-red-500/40 shadow-sm'
+                                            : p === 'medium'
+                                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
+                                          : 'bg-slate-950/40 text-slate-500 border-slate-800 hover:text-slate-300 hover:bg-slate-800'
+                                      }`}
+                                    >
+                                      {p}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Status Switcher */}
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">Status:</span>
+                                <div className="flex items-center gap-1">
+                                  {(['pending', 'in_progress', 'done'] as const).map((st) => (
+                                    <button
+                                      key={st}
+                                      onClick={() => handleChangeStatus(task, st)}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition border ${
+                                        content.taskStatus === st
+                                          ? st === 'done'
+                                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                            : st === 'in_progress'
+                                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                              : 'bg-slate-800 text-slate-200 border-slate-700'
+                                          : 'bg-slate-950/40 text-slate-500 border-slate-800 hover:text-slate-300 hover:bg-slate-800'
+                                      }`}
+                                    >
+                                      {st === 'in_progress' ? 'In Progress' : st}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 1. Full Description Card */}
+                            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-4 relative shadow-inner space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5 text-brand-400" />
+                                  <span>Detailed Description</span>
+                                </span>
+
+                                <button
+                                  onClick={(e) => handleCopyDescription(e, content.details, task.id)}
+                                  className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1 rounded-md transition border border-slate-750"
+                                  title="Copy detailed task description"
+                                >
+                                  {copiedTaskId === task.id ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                      <span className="text-emerald-400 font-semibold">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>Copy Details</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                              <p className="text-sm text-slate-100 font-normal leading-relaxed whitespace-pre-wrap select-text">
+                                {content.details}
+                              </p>
+                            </div>
+
+                            {/* 2. Key Context (Dynamic Extracted Information) */}
+                            {Object.keys(content.keyContext).length > 0 && (
+                              <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3.5 space-y-2.5">
+                                <div className="flex items-center gap-1.5">
+                                  <Info className="w-3.5 h-3.5 text-brand-400" />
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Key Context & Specifications
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {Object.entries(content.keyContext).map(([key, val]) => (
+                                    <div 
+                                      key={key} 
+                                      className="p-2.5 bg-slate-950/60 border border-slate-850 rounded-lg space-y-1"
+                                    >
+                                      <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider truncate">
+                                        {key}
+                                      </p>
+                                      <p className="text-xs font-medium text-slate-200 break-words">
+                                        {val}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 3. Next Actions / Subtasks Checklist */}
+                            <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3.5 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <ListTodo className="w-3.5 h-3.5 text-brand-400" />
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Next Actions & Checklist
+                                  </span>
+                                  {content.subtasks.length > 0 && (
+                                    <span className="text-[10px] font-semibold text-slate-500 ml-1">
+                                      ({completedSubtasksCount} of {content.subtasks.length} done)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {content.subtasks.length > 0 ? (
+                                <div className="space-y-1.5">
+                                  {content.subtasks.map((st) => (
+                                    <div 
+                                      key={st.id}
+                                      className={`flex items-center justify-between p-2 rounded-lg border transition group/st ${
+                                        st.completed 
+                                          ? 'bg-slate-950/40 border-slate-850 text-slate-500' 
+                                          : 'bg-slate-950/80 border-slate-800 text-slate-200 hover:border-slate-700'
+                                      }`}
+                                    >
+                                      <label className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer select-none">
+                                        <input
+                                          type="checkbox"
+                                          checked={st.completed}
+                                          onChange={() => handleToggleSubtask(task, st.id)}
+                                          className="rounded border-slate-700 text-brand-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 cursor-pointer"
+                                        />
+                                        <span className={`text-xs ${st.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                                          {st.title}
+                                        </span>
+                                      </label>
+
+                                      <button
+                                        onClick={() => handleDeleteSubtask(task, st.id)}
+                                        className="p-1 text-slate-600 hover:text-red-400 rounded transition opacity-0 group-hover/st:opacity-100"
+                                        title="Remove subtask"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-500 italic">No specific subtasks defined.</p>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <input
+                                  type="text"
+                                  placeholder="Add an actionable next step..."
+                                  value={newSubtaskInputs[task.id] || ''}
+                                  onChange={(e) => setNewSubtaskInputs(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      handleAddSubtask(task)
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-slate-950/90 border border-slate-800 focus:border-brand-500/80 focus:outline-none rounded-lg text-slate-200 text-xs transition placeholder:text-slate-600"
+                                />
+                                <button
+                                  onClick={() => handleAddSubtask(task)}
+                                  disabled={!(newSubtaskInputs[task.id] || '').trim()}
+                                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-40"
+                                >
+                                  Add Action
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 4. AI Recommendation */}
+                            {content.recommendation && (
+                              <div className="p-3 bg-brand-500/5 border border-brand-500/20 rounded-lg flex items-start gap-2.5 text-xs">
+                                <Sparkles className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5 min-w-0">
+                                  <p className="text-[10px] font-bold text-brand-300 uppercase tracking-wider">
+                                    AI Recommendation
+                                  </p>
+                                  <p className="text-xs text-brand-100/90 leading-relaxed">
+                                    {content.recommendation}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 5. Detailed Metadata Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                              {/* Customer */}
+                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
+                                <Building2 className="w-4 h-4 text-brand-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Account / Client</p>
+                                  <p className="text-xs font-semibold text-slate-200 truncate">
+                                    {task.customer?.name || 'Customer Account'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Due Date */}
+                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
+                                <Calendar className={`w-4 h-4 shrink-0 ${overdue ? 'text-red-400' : 'text-brand-400'}`} />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Scheduled Deadline</p>
+                                  <p className={`text-xs font-semibold ${overdue ? 'text-red-400 font-bold' : 'text-slate-200'}`}>
+                                    {formatDetailedDate(task.due_date)}
+                                    {relativeDue && (
+                                      <span className="ml-1 text-[10px] text-slate-400 font-normal">({relativeDue})</span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Created At */}
+                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
+                                <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Created</p>
+                                  <p className="text-xs text-slate-300">
+                                    {formatDateTime(task.created_at) || 'Recently'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 6. Quick Contact Actions */}
+                            {task.customer && (task.customer.phone || task.customer.email) && (
+                              <div className="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-800/80 rounded-lg text-xs">
+                                <span className="text-[11px] text-slate-400">Direct Outreach:</span>
+                                <div className="flex items-center gap-1.5">
+                                  {task.customer.phone && (
+                                    <>
+                                      <a
+                                        href={`https://wa.me/${task.customer.phone.replace(/[^0-9]/g, '')}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 transition"
+                                      >
+                                        <MessageSquare className="w-3 h-3" />
+                                        <span>WhatsApp</span>
+                                      </a>
+                                      <a
+                                        href={`tel:${task.customer.phone}`}
+                                        className="flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded border border-blue-500/20 transition"
+                                      >
+                                        <Phone className="w-3 h-3" />
+                                        <span>Call</span>
+                                      </a>
+                                    </>
+                                  )}
+                                  {task.customer.email && (
+                                    <a
+                                      href={`mailto:${task.customer.email}`}
+                                      className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 bg-slate-800 hover:bg-slate-750 px-2 py-1 rounded border border-slate-700 transition"
+                                    >
+                                      <Mail className="w-3 h-3" />
+                                      <span>Email</span>
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 7. Activity History */}
+                            {content.activity.length > 0 && (
+                              <div className="bg-slate-900/30 border border-slate-850 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-slate-450">
+                                  <History className="w-3.5 h-3.5" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Activity History</span>
+                                </div>
+                                <div className="space-y-1.5 pl-2 border-l border-slate-800">
+                                  {content.activity.slice(-4).map((act) => (
+                                    <div key={act.id} className="text-[11px] text-slate-400 flex items-baseline justify-between gap-2">
+                                      <span>{act.description}</span>
+                                      <span className="text-[10px] text-slate-550 shrink-0">
+                                        {formatDateTime(act.timestamp)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 8. Bottom Action Buttons */}
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleComplete(task)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-semibold transition"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Mark Completed</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleCreateFollowUp(task)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/25 text-brand-300 rounded-lg text-xs font-semibold transition"
+                                >
+                                  <ArrowRightCircle className="w-3.5 h-3.5" />
+                                  <span>Create Follow-up</span>
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleEditClick(task)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteClick(task)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-950/20 border border-red-900/30 hover:bg-red-950/40 text-red-400 rounded-lg text-xs font-medium transition"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -275,47 +984,147 @@ export const GlobalTasksPage: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
                   Completed Tasks ({completedTasks.length})
                 </h3>
-                <div className="bg-slate-900/20 border border-slate-800/60 rounded-xl divide-y divide-slate-800/60 overflow-hidden opacity-75 hover:opacity-100 transition-opacity duration-200">
-                  {completedTasks.map(task => (
-                    <div key={task.id} className="flex items-start justify-between p-4 hover:bg-slate-900/25 transition duration-150 group gap-4 bg-slate-950/10">
-                      <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                        <button
-                          onClick={() => handleToggleComplete(task)}
-                          className="mt-0.5 text-brand-500 shrink-0"
+                <div className="bg-slate-900/20 border border-slate-800/60 rounded-xl divide-y divide-slate-800/60 overflow-hidden opacity-85 hover:opacity-100 transition-opacity duration-200">
+                  {completedTasks.map(task => {
+                    const isExpanded = expandedTaskId === task.id
+                    const content = parseTaskContent(task)
+
+                    return (
+                      <div 
+                        key={task.id} 
+                        className={`transition-colors duration-150 bg-slate-950/10 ${
+                          isExpanded ? 'bg-slate-900/40' : 'hover:bg-slate-900/25'
+                        }`}
+                      >
+                        <div
+                          onClick={() => toggleExpand(task.id)}
+                          className="flex items-start justify-between p-4 cursor-pointer group gap-4"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              toggleExpand(task.id)
+                            }
+                          }}
+                          title="Click to view details"
                         >
-                          <CheckCircle2 className="w-4.5 h-4.5 fill-brand-500/10" />
-                        </button>
-                        <div className="min-w-0 space-y-1.5">
-                          <p className="text-sm font-normal text-slate-500 line-through leading-snug break-words">
-                            {task.description}
-                          </p>
-                          <div className="flex items-center gap-3">
-                            {task.customer?.name && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                                <Building2 className="w-3.5 h-3.5 text-slate-700" />
-                                <span>{task.customer.name}</span>
-                              </span>
-                            )}
-                            {task.due_date && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 tracking-wide">
-                                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                <span>Completed</span>
-                              </span>
-                            )}
+                          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleToggleComplete(task)
+                              }}
+                              className="mt-0.5 text-brand-500 shrink-0"
+                              title="Mark Pending"
+                            >
+                              <CheckCircle2 className="w-4.5 h-4.5 fill-brand-500/10" />
+                            </button>
+                            <div className="min-w-0 space-y-1.5 flex-1">
+                              <p className="text-sm font-normal text-slate-500 line-through leading-snug break-words">
+                                {content.title}
+                              </p>
+                              <div className="flex items-center gap-3">
+                                {task.customer?.name && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                                    <Building2 className="w-3.5 h-3.5 text-slate-700" />
+                                    <span>{task.customer.name}</span>
+                                  </span>
+                                )}
+                                {renderPriorityPill(content.priority)}
+                                {task.due_date && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 tracking-wide">
+                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Completed</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteClick(task)
+                              }}
+                              className="p-1.5 text-slate-650 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              title="Delete Task"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div 
+                              className={`p-1 text-slate-600 group-hover:text-slate-400 rounded transition-transform duration-200 ${
+                                isExpanded ? 'rotate-180 text-brand-400' : ''
+                              }`}
+                              title={isExpanded ? 'Collapse' : 'Expand Details'}
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
-                        <button
-                          onClick={() => handleDeleteClick(task)}
-                          className="p-1.5 text-slate-650 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Completed Task Expanded Detail Panel */}
+                        {isExpanded && (
+                          <div className="px-5 pb-5 pt-2 border-t border-slate-800/60 bg-slate-950/40 space-y-3.5 animate-fadeIn">
+                            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-4 relative shadow-inner">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <span>Task Completed</span>
+                                </span>
+                                <button
+                                  onClick={(e) => handleCopyDescription(e, content.details, task.id)}
+                                  className="flex items-center gap-1 text-[10px] text-slate-450 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 px-2 py-1 rounded transition border border-slate-750"
+                                >
+                                  {copiedTaskId === task.id ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                      <span className="text-emerald-400 font-semibold">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>Copy Details</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <p className="text-sm text-slate-300 font-normal leading-relaxed whitespace-pre-wrap select-text">
+                                {content.details}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleComplete(task)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-850 rounded-lg text-xs font-semibold transition"
+                                >
+                                  <Circle className="w-3.5 h-3.5" />
+                                  <span>Re-open Task</span>
+                                </button>
+                                <button
+                                  onClick={() => handleCreateFollowUp(task)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/25 text-brand-300 rounded-lg text-xs font-semibold transition"
+                                >
+                                  <ArrowRightCircle className="w-3.5 h-3.5" />
+                                  <span>Create Follow-up</span>
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={() => handleDeleteClick(task)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-red-950/20 border border-red-900/30 hover:bg-red-950/40 text-red-400 rounded-lg text-xs font-medium transition"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -324,18 +1133,18 @@ export const GlobalTasksPage: React.FC = () => {
 
       </div>
 
-      {/* Edit Form Modal */}
-      {selectedTask && (
-        <TaskFormModal
-          isOpen={isFormOpen}
-          onClose={() => {
-            setIsFormOpen(false)
-            setSelectedTask(null)
-          }}
-          onSubmit={handleFormSubmit}
-          task={selectedTask}
-        />
-      )}
+      {/* Edit / Follow-up Form Modal */}
+      <TaskFormModal
+        isOpen={isFormOpen}
+        onClose={() => {
+          setIsFormOpen(false)
+          setSelectedTask(null)
+          setFollowUpTitle('')
+        }}
+        onSubmit={handleFormSubmit}
+        task={selectedTask}
+        initialTitle={followUpTitle}
+      />
 
       {/* Delete Confirmation */}
       {selectedTask && (

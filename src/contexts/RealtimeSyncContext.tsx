@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase/client'
+import { autoProcessRecording } from '../services/aiPipelineService'
+import { MeetingRecording } from '../types'
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected';
 
@@ -17,7 +19,7 @@ interface RealtimeSyncContextType {
   subscribe: (listener: RealtimeListener) => () => void;
 }
 
-const RealtimeSyncContext = createContext<RealtimeSyncContextType | undefined>(undefined);
+const RealtimeSyncContext = createContext<RealtimeSyncContextType | undefined>(undefined)
 
 export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<SyncStatus>('connecting')
@@ -48,6 +50,32 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
     })
   }
 
+  /**
+   * Automatic processing trigger.
+   * When a meeting_recordings row arrives (INSERT or UPDATE) with status='uploaded',
+   * trigger the AI pipeline automatically. The autoProcessRecording function
+   * enforces idempotency via an atomic status claim.
+   *
+   * This handles both browser recordings and audio file uploads from the extension.
+   */
+  const handleAutoProcess = async (payload: any) => {
+    const record = payload.new
+    if (!record || record.status !== 'uploaded') return
+
+    // Require Electron context (local AI pipeline)
+    if (!window.electronAPI?.downloadToTemp || !window.ai?.processCall) {
+      console.log('[AutoProcess] Electron not available — skipping automatic processing.')
+      return
+    }
+
+    console.log('[AutoProcess] Detected uploaded recording:', record.id)
+    try {
+      await autoProcessRecording(record as MeetingRecording)
+    } catch (err) {
+      // Errors are already logged and status updated inside autoProcessRecording
+    }
+  }
+
   useEffect(() => {
     console.log('Establishing Realtime Sync channel...');
     setStatus('connecting')
@@ -60,6 +88,14 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
         { event: '*', schema: 'public' },
         (payload) => {
           broadcastEvent(payload)
+
+          // Auto-process uploaded recordings
+          if (
+            payload.table === 'meeting_recordings' &&
+            (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')
+          ) {
+            handleAutoProcess(payload)
+          }
         }
       )
       .subscribe((subscribeStatus) => {
@@ -77,7 +113,6 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return () => {
       console.log('Cleaning up Realtime Sync channel...');
-      // Remove channel from client
       supabase.removeChannel(channel)
     };
   }, [])

@@ -1,14 +1,15 @@
 import React, { useState } from 'react'
-import { Customer, Task } from '../types'
+import { Customer, Task, AIPipelineResponse } from '../types'
 import { useWorkspace } from '../hooks/useWorkspace'
 import { OverviewTab } from '../components/workspace/OverviewTab'
 import { CallsTab } from '../components/workspace/CallsTab'
 import { TasksTab } from '../components/workspace/TasksTab'
 import { DealsTab } from '../components/workspace/DealsTab'
+import { TranscriptTab } from '../components/workspace/TranscriptTab'
 import { TaskFormModal } from '../components/workspace/TaskFormModal'
 import { DeleteTaskDialog } from '../components/workspace/DeleteTaskDialog'
 import { exportCustomerCsv, exportCustomerPdf } from '../services/exportService'
-import { ChevronRight, ArrowLeft, User, PhoneCall, CheckSquare, TrendingUp, AlertCircle, Download, FileText, Loader2 } from 'lucide-react'
+import { ChevronRight, ArrowLeft, User, PhoneCall, CheckSquare, TrendingUp, AlertCircle, Download, FileText, Loader2, Mic } from 'lucide-react'
 
 interface CustomerWorkspacePageProps {
   customer: Customer;
@@ -43,6 +44,9 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [lastTranscriptResult, setLastTranscriptResult] = useState<AIPipelineResponse | null>(null)
+
+  const [followUpTitle, setFollowUpTitle] = useState<string>('')
 
   const exportPayload = { customer, calls, summaries, tasks, deals }
 
@@ -69,11 +73,19 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
 
   const handleAddTaskClick = () => {
     setSelectedTask(null)
+    setFollowUpTitle('')
+    setIsTaskFormOpen(true)
+  }
+
+  const handleCreateFollowUpClick = (suggestedTitle: string) => {
+    setSelectedTask(null)
+    setFollowUpTitle(suggestedTitle)
     setIsTaskFormOpen(true)
   }
 
   const handleEditTaskClick = (task: Task) => {
     setSelectedTask(task)
+    setFollowUpTitle('')
     setIsTaskFormOpen(true)
   }
 
@@ -82,12 +94,17 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
     setIsDeleteTaskOpen(true)
   }
 
-  const handleTaskFormSubmit = async (description: string, dueDate?: string) => {
+  const handleTaskFormSubmit = async (description: string, dueDate?: string, status?: 'pending' | 'in_progress' | 'done') => {
+    const dbStatus = status === 'done' ? 'done' : 'pending'
     if (selectedTask) {
-      await editTask(selectedTask.id, description, dueDate)
+      await editTask(selectedTask.id, description, dueDate, dbStatus)
     } else {
-      await addTask(description, dueDate)
+      await addTask(description, dueDate, dbStatus)
     }
+  }
+
+  const handleUpdateTaskDirect = async (taskId: string, description: string, dueDate?: string, status?: 'pending' | 'done') => {
+    await editTask(taskId, description, dueDate, status)
   }
 
   const handleDeleteTaskConfirm = async () => {
@@ -109,16 +126,23 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
           />
         )
       case 'calls':
-        return <CallsTab calls={calls} recordings={recordings} loading={loading} customerId={customer.id} />
+        return <CallsTab calls={calls} recordings={recordings} loading={loading} customerId={customer.id} onTranscriptResult={setLastTranscriptResult} />
+      case 'transcript':
+        return <TranscriptTab calls={calls} lastResult={lastTranscriptResult} />
       case 'tasks':
         return (
           <TasksTab
             tasks={tasks}
             loading={loading}
+            customer={customer}
             onAddTask={handleAddTaskClick}
             onEditTask={handleEditTaskClick}
             onDeleteTask={handleDeleteTaskClick}
             onToggleComplete={toggleTaskComplete}
+            onUpdateTaskDirect={handleUpdateTaskDirect}
+            onCreateFollowUp={handleCreateFollowUpClick}
+            onViewCall={() => setActiveTab('calls')}
+            onViewTranscript={() => setActiveTab('transcript')}
           />
         )
       case 'deals':
@@ -137,6 +161,7 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
   const tabItems = [
     { id: 'overview', label: 'Overview', icon: User },
     { id: 'calls', label: 'Calls', icon: PhoneCall },
+    { id: 'transcript', label: 'Transcript', icon: Mic },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'deals', label: 'Deals', icon: TrendingUp }
   ] as const;
@@ -228,9 +253,13 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
       {/* Task Form Modal */}
       <TaskFormModal
         isOpen={isTaskFormOpen}
-        onClose={() => setIsTaskFormOpen(false)}
+        onClose={() => {
+          setIsTaskFormOpen(false)
+          setFollowUpTitle('')
+        }}
         onSubmit={handleTaskFormSubmit}
         task={selectedTask}
+        initialTitle={followUpTitle}
       />
 
       {/* Delete Task Confirmation Dialog */}
@@ -244,3 +273,4 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
     </div>
   )
 }
+

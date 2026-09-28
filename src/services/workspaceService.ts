@@ -56,6 +56,24 @@ export async function getCustomerRecordings(customerId: string) {
 }
 
 /**
+ * Helper to sanitize dates on retrieved tasks.
+ * If a task has an invalid date or a date before 2025 (e.g. LLM training-set hallucination like 2023),
+ * it is cleaned in-memory and repaired in Supabase.
+ */
+function sanitizeTaskDates<T extends Task>(taskList: T[]): T[] {
+  return taskList.map(task => {
+    if (!task.due_date) return task;
+    const dueDate = new Date(task.due_date);
+    if (isNaN(dueDate.getTime()) || dueDate.getFullYear() < 2025) {
+      // Clean up in background so DB row is fixed permanently
+      supabase.from('tasks').update({ due_date: null }).eq('id', task.id).then();
+      return { ...task, due_date: undefined };
+    }
+    return task;
+  });
+}
+
+/**
  * Retrieve tasks list associated with a specific customer.
  */
 export async function getCustomerTasks(customerId: string): Promise<Task[]> {
@@ -70,7 +88,7 @@ export async function getCustomerTasks(customerId: string): Promise<Task[]> {
       throw handleWorkspaceError(error, 'Unable to load tasks list.');
     }
 
-    return data || [];
+    return sanitizeTaskDates(data || []);
   } catch (err: any) {
     throw err instanceof Error ? err : new Error('An unexpected error occurred while loading tasks.');
   }
@@ -313,7 +331,7 @@ export async function getGlobalTasks(): Promise<(Task & { customer?: { name: str
       throw handleWorkspaceError(error, 'Unable to load global tasks.');
     }
 
-    return data || [];
+    return sanitizeTaskDates(data || []);
   } catch (err: any) {
     throw err instanceof Error ? err : new Error('An unexpected error occurred while loading global tasks.');
   }

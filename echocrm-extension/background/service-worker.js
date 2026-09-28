@@ -9,7 +9,8 @@ let recordingState = {
   tabId: null,
   platform: null,
   meetingUrl: null,
-  startedAt: null
+  startedAt: null,
+  customerId: null  // Pre-selected customer UUID (null = AI will identify after upload)
 };
 
 // Initialize or sync state on startup
@@ -126,7 +127,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tabId: null,
         platform: null,
         meetingUrl: null,
-        startedAt: null
+        startedAt: null,
+        customerId: null
       };
       saveState();
       return false;
@@ -150,7 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-async function handleStartRecording({ tabId, platform, meetingUrl }) {
+async function handleStartRecording({ tabId, platform, meetingUrl, customerId = null }) {
   if (recordingState.isRecording) {
     throw new Error('Recording is already in progress.');
   }
@@ -176,7 +178,8 @@ async function handleStartRecording({ tabId, platform, meetingUrl }) {
   const metadata = {
     platform,
     meetingUrl,
-    startedAt
+    startedAt,
+    customerId: customerId || null  // Passed to offscreen document for storage in IndexedDB
   };
 
   const response = await chrome.runtime.sendMessage({
@@ -200,7 +203,8 @@ async function handleStartRecording({ tabId, platform, meetingUrl }) {
     tabId,
     platform,
     meetingUrl,
-    startedAt
+    startedAt,
+    customerId: customerId || null
   };
 
   await saveState();
@@ -230,7 +234,8 @@ async function handleStopRecording() {
     tabId: null,
     platform: null,
     meetingUrl: null,
-    startedAt: null
+    startedAt: null,
+    customerId: null
   };
 
   await saveState();

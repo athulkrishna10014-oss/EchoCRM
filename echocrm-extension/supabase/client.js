@@ -188,10 +188,75 @@ class SupabaseExtensionClient {
   }
 
   // ---------------------------------------------------------------------------
+  // Customer APIs
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Search customers by partial name for the signed-in user.
+   * Returns array of { id, name, email, phone, company }.
+   */
+  async searchCustomers(query) {
+    if (!query || !query.trim()) return [];
+    const term = encodeURIComponent(`%${query.trim()}%`);
+    const endpoint = `${this.url}/rest/v1/customers?name=ilike.${term}&select=id,name,email,phone,company&order=name.asc&limit=20`;
+
+    const res = await fetch(endpoint, {
+      headers: await this.getHeaders(null)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Customer search failed (${res.status}): ${errText}`);
+    }
+    return res.json();
+  }
+
+  /**
+   * Create a new customer for the signed-in user.
+   * Uses the SAME schema as the desktop EchoCRM customer creation.
+   * Returns the created customer row including its id.
+   */
+  async createCustomer({ name, phone = null, email = null, company = null, tags = [] }) {
+    const session = await this.getValidSession();
+    if (!session || !session.user) {
+      throw new Error('You must be signed in to create a customer.');
+    }
+    const ownerId = session.user.id;
+
+    const payload = {
+      owner_id: ownerId,
+      name: name.trim(),
+      phone: phone ? phone.trim() : null,
+      email: email ? email.trim() : null,
+      company: company ? company.trim() : null,
+      tags: tags || []
+    };
+
+    const endpoint = `${this.url}/rest/v1/customers`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: await this.getHeaders('application/json', {
+        'Prefer': 'return=representation'
+      }),
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Failed to create customer (${res.status}): ${errText}`);
+    }
+
+    const data = await res.json();
+    return data && data[0] ? data[0] : data;
+  }
+
+  // ---------------------------------------------------------------------------
   // Database / Storage
   // ---------------------------------------------------------------------------
+
   /**
    * Idempotent upsert of meeting record row, scoped to the signed-in owner.
+   * Accepts optional customer_id to associate the recording with a customer.
    */
   async upsertMeetingRecord(record) {
     const session = await this.getValidSession();
@@ -220,6 +285,11 @@ class SupabaseExtensionClient {
       updated_at: new Date().toISOString()
     };
 
+    // Include customer_id only when explicitly provided (do not overwrite with null accidentally)
+    if (record.customerId !== undefined) {
+      payload.customer_id = record.customerId || null;
+    }
+
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: await this.getHeaders('application/json', {
@@ -238,15 +308,18 @@ class SupabaseExtensionClient {
   }
 
   /**
-   * Upload audio WebM blob to Supabase Storage with idempotent overwrite (x-upsert: true)
+   * Upload audio blob to Supabase Storage.
+   * Supports webm (browser recording), wav, mp3, m4a (file uploads).
+   * Uses x-upsert: true for idempotent overwrite on retry.
    */
-  async uploadAudioBlob(recordingId, audioBlob) {
-    const storagePath = `recordings/${recordingId}.webm`;
+  async uploadAudioBlob(recordingId, audioBlob, extension = 'webm') {
+    const safeExt = extension.replace(/^\./, '').toLowerCase();
+    const storagePath = `recordings/${recordingId}.${safeExt}`;
     const endpoint = `${this.url}/storage/v1/object/${this.bucket}/${storagePath}`;
 
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: await this.getHeaders(audioBlob.type || 'audio/webm', {
+      headers: await this.getHeaders(audioBlob.type || `audio/${safeExt}`, {
         'x-upsert': 'true'
       }),
       body: audioBlob
@@ -258,16 +331,19 @@ class SupabaseExtensionClient {
     }
 
     const publicUrl = `${this.url}/storage/v1/object/public/${this.bucket}/${storagePath}`;
-    return {
-      storagePath,
-      publicUrl
-    };
+    return { storagePath, publicUrl };
   }
 
   /**
-   * Complete upload workflow: DB Upsert -> Storage Upload -> DB Status Update
+   * Complete upload workflow: DB Upsert -> Storage Upload -> DB Status Update.
+   * Sets status to 'uploaded' on success, which triggers automatic processing
+   * in the desktop EchoCRM app via realtime subscription.
+   *
+   * @param {object} record - Recording metadata including optional customerId
+   * @param {Blob} audioBlob - The audio data
+   * @param {string} [extension] - File extension override (default: 'webm')
    */
-  async uploadRecording(record, audioBlob) {
+  async uploadRecording(record, audioBlob, extension = 'webm') {
     // 1. Initial status update: uploading
     await this.upsertMeetingRecord({
       ...record,
@@ -276,13 +352,13 @@ class SupabaseExtensionClient {
 
     try {
       // 2. Upload file to storage bucket
-      const { storagePath, publicUrl } = await this.uploadAudioBlob(record.id, audioBlob);
+      const { storagePath, publicUrl } = await this.uploadAudioBlob(record.id, audioBlob, extension);
 
-      // 3. Mark completed in DB
+      // 3. Mark as 'uploaded' — this triggers autoProcessRecording in desktop app
       const updatedRow = await this.upsertMeetingRecord({
         ...record,
         storagePath,
-        status: 'uploaded',
+        status: 'uploaded',  // <-- desktop realtime listener picks this up
         lastError: null
       });
 

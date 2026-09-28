@@ -1,13 +1,20 @@
 /**
- * EchoCRM Popup Script
+ * EchoCRM Popup Script v1.4
  * Handles meeting detection, WebRTC injector readiness, live VAD meters,
- * and speaker attribution timeline analysis.
+ * speaker attribution timeline, customer selection/creation, and audio file upload.
  */
 
 let activeTab = null;
 let detectedPlatform = null;
 let timerInterval = null;
 let cloudIsSignedIn = false;
+
+// Selected customer state — authoritative for both recording and file upload
+let selectedCustomer = null; // { id, name } or null
+
+// File upload state
+let pendingUploadFile = null; // File object
+let pendingUploadId = null;   // UUID for the upload recording
 
 // DOM Elements
 const idleView = document.getElementById('idleView');
@@ -54,6 +61,36 @@ const cloudSignInBtn = document.getElementById('cloudSignInBtn');
 const cloudSignOutBtn = document.getElementById('cloudSignOutBtn');
 const cloudUserEmail = document.getElementById('cloudUserEmail');
 const cloudAuthError = document.getElementById('cloudAuthError');
+
+// Customer elements
+const customerSearchInput = document.getElementById('customerSearchInput');
+const customerSearchResults = document.getElementById('customerSearchResults');
+const selectedCustomerBadge = document.getElementById('selectedCustomerBadge');
+const selectedCustomerDisplay = document.getElementById('selectedCustomerDisplay');
+const selectedCustomerName = document.getElementById('selectedCustomerName');
+const clearCustomerBtn = document.getElementById('clearCustomerBtn');
+const addCustomerBtn = document.getElementById('addCustomerBtn');
+const addCustomerForm = document.getElementById('addCustomerForm');
+const newCustName = document.getElementById('newCustName');
+const newCustEmail = document.getElementById('newCustEmail');
+const newCustPhone = document.getElementById('newCustPhone');
+const newCustCompany = document.getElementById('newCustCompany');
+const cancelAddCustomerBtn = document.getElementById('cancelAddCustomerBtn');
+const saveNewCustomerBtn = document.getElementById('saveNewCustomerBtn');
+const addCustomerError = document.getElementById('addCustomerError');
+
+// Upload elements
+const audioFileInput = document.getElementById('audioFileInput');
+const selectAudioFileBtn = document.getElementById('selectAudioFileBtn');
+const uploadConfirmPanel = document.getElementById('uploadConfirmPanel');
+const uploadFileName = document.getElementById('uploadFileName');
+const uploadCustomerName = document.getElementById('uploadCustomerName');
+const changeUploadCustomerBtn = document.getElementById('changeUploadCustomerBtn');
+const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+const uploadProgress = document.getElementById('uploadProgress');
+const uploadProgressBar = document.getElementById('uploadProgressBar');
+const uploadProgressLabel = document.getElementById('uploadProgressLabel');
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
@@ -103,6 +140,224 @@ function hideCloudError() {
   cloudAuthError.classList.add('hidden');
 }
 
+// ---------------------------------------------------------------------------
+// Customer selection
+// ---------------------------------------------------------------------------
+
+function setSelectedCustomer(customer) {
+  selectedCustomer = customer;
+  if (customer) {
+    selectedCustomerName.textContent = customer.name;
+    selectedCustomerDisplay.classList.remove('hidden');
+    selectedCustomerBadge.textContent = customer.name;
+    selectedCustomerBadge.className = 'platform-badge meet';
+    clearCustomerBtn.classList.remove('hidden');
+    customerSearchInput.value = '';
+    customerSearchResults.classList.add('hidden');
+    // Update upload confirmation if visible
+    updateUploadCustomerDisplay();
+  } else {
+    selectedCustomerDisplay.classList.add('hidden');
+    selectedCustomerBadge.textContent = 'Not selected';
+    selectedCustomerBadge.className = 'platform-badge unverified';
+    clearCustomerBtn.classList.add('hidden');
+    updateUploadCustomerDisplay();
+  }
+}
+
+function updateUploadCustomerDisplay() {
+  if (uploadCustomerName) {
+    uploadCustomerName.textContent = selectedCustomer
+      ? selectedCustomer.name
+      : 'Auto-detect from recording (creates temporary customer)';
+  }
+}
+
+let searchDebounceTimer = null;
+
+async function handleCustomerSearch(query) {
+  if (!window.supabaseClient || !cloudIsSignedIn) return;
+  if (!query || !query.trim()) {
+    customerSearchResults.innerHTML = '';
+    customerSearchResults.classList.add('hidden');
+    return;
+  }
+
+  try {
+    const results = await window.supabaseClient.searchCustomers(query);
+    customerSearchResults.innerHTML = '';
+    if (results.length === 0) {
+      customerSearchResults.innerHTML = '<div class="customer-result-item no-results">No customers found</div>';
+    } else {
+      results.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'customer-result-item';
+        item.textContent = c.name + (c.company ? ` — ${c.company}` : '');
+        item.addEventListener('click', () => {
+          setSelectedCustomer({ id: c.id, name: c.name });
+          customerSearchResults.classList.add('hidden');
+          addCustomerForm.classList.add('hidden');
+        });
+        customerSearchResults.appendChild(item);
+      });
+    }
+    customerSearchResults.classList.remove('hidden');
+  } catch (err) {
+    console.error('Customer search error:', err);
+  }
+}
+
+async function handleSaveNewCustomer() {
+  const name = (newCustName.value || '').trim();
+  if (!name) {
+    addCustomerError.textContent = 'Customer name is required.';
+    addCustomerError.classList.remove('hidden');
+    return;
+  }
+
+  const email = (newCustEmail.value || '').trim();
+  if (email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      addCustomerError.textContent = 'Please provide a valid email address.';
+      addCustomerError.classList.remove('hidden');
+      return;
+    }
+  }
+
+  if (!window.supabaseClient || !cloudIsSignedIn) {
+    addCustomerError.textContent = 'You must be signed in to create a customer.';
+    addCustomerError.classList.remove('hidden');
+    return;
+  }
+
+  saveNewCustomerBtn.disabled = true;
+  saveNewCustomerBtn.textContent = 'Saving...';
+  addCustomerError.classList.add('hidden');
+
+  try {
+    const created = await window.supabaseClient.createCustomer({
+      name,
+      email: email || null,
+      phone: (newCustPhone.value || '').trim() || null,
+      company: (newCustCompany.value || '').trim() || null,
+      tags: []
+    });
+
+    setSelectedCustomer({ id: created.id, name: created.name });
+    addCustomerForm.classList.add('hidden');
+    // Reset form
+    newCustName.value = '';
+    newCustEmail.value = '';
+    newCustPhone.value = '';
+    newCustCompany.value = '';
+  } catch (err) {
+    addCustomerError.textContent = err.message || 'Failed to create customer.';
+    addCustomerError.classList.remove('hidden');
+  } finally {
+    saveNewCustomerBtn.disabled = false;
+    saveNewCustomerBtn.textContent = 'Save Customer';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Audio file upload
+// ---------------------------------------------------------------------------
+
+function showUploadConfirmPanel(file) {
+  uploadFileName.textContent = file.name;
+  updateUploadCustomerDisplay();
+  uploadConfirmPanel.classList.remove('hidden');
+  uploadProgress.classList.add('hidden');
+  uploadProgressBar.style.width = '0%';
+  confirmUploadBtn.disabled = false;
+  confirmUploadBtn.textContent = 'Upload & Process';
+}
+
+function hideUploadConfirmPanel() {
+  uploadConfirmPanel.classList.add('hidden');
+  pendingUploadFile = null;
+  pendingUploadId = null;
+  audioFileInput.value = '';
+}
+
+function getFileExtension(filename) {
+  return filename.split('.').pop() || 'webm';
+}
+
+async function handleConfirmUpload() {
+  if (!pendingUploadFile) return;
+
+  if (!window.supabaseClient || !cloudIsSignedIn) {
+    showAlert('Please sign in to EchoCRM before uploading.');
+    return;
+  }
+
+  confirmUploadBtn.disabled = true;
+  confirmUploadBtn.textContent = 'Uploading...';
+  uploadProgress.classList.remove('hidden');
+  uploadProgressBar.style.width = '20%';
+  uploadProgressLabel.textContent = 'Uploading audio file...';
+
+  try {
+    const file = pendingUploadFile;
+    const ext = getFileExtension(file.name);
+    const uploadId = pendingUploadId || crypto.randomUUID();
+    pendingUploadId = uploadId;
+
+    const now = new Date().toISOString();
+
+    // PATH A: Customer manually selected
+    // PATH B: No customer selected -> Create temporary customer profile immediately
+    let customerId = selectedCustomer ? selectedCustomer.id : null;
+    if (!customerId) {
+      uploadProgressBar.style.width = '25%';
+      uploadProgressLabel.textContent = 'Creating temporary customer profile...';
+      const shortId = uploadId.slice(0, 8);
+      const tempCustomer = await window.supabaseClient.createCustomer({
+        name: `Unknown Customer - ${shortId}`,
+        tags: ['temporary', 'auto-detected']
+      });
+      customerId = tempCustomer.id;
+    }
+
+    const record = {
+      id: uploadId,
+      platform: 'audio_upload',
+      meetingUrl: file.name,    // store filename as reference
+      startedAt: now,
+      stoppedAt: now,
+      durationSeconds: 0,
+      mimeType: file.type || `audio/${ext}`,
+      status: 'local_saved',
+      customerId: customerId
+    };
+
+    uploadProgressBar.style.width = '50%';
+    uploadProgressLabel.textContent = 'Uploading to cloud...';
+
+    await window.supabaseClient.uploadRecording(record, file, ext);
+
+    uploadProgressBar.style.width = '100%';
+    uploadProgressLabel.textContent = 'Uploaded! Processing will start automatically.';
+
+    setTimeout(() => {
+      hideUploadConfirmPanel();
+      syncToast('Audio file uploaded. EchoCRM will process it automatically.');
+    }, 2000);
+
+  } catch (err) {
+    uploadProgressBar.style.width = '0%';
+    uploadProgressLabel.textContent = 'Upload failed.';
+    showAlert('Upload failed: ' + (err.message || String(err)));
+    confirmUploadBtn.disabled = false;
+    confirmUploadBtn.textContent = 'Upload & Process';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Event listeners
+// ---------------------------------------------------------------------------
 function setupEventListeners() {
   copyNoticeBtn.addEventListener('click', () => {
     const noticeText = 'Note: This sales meeting is being recorded for quality, note-taking, and CRM summary purposes.';
@@ -137,7 +392,6 @@ function setupEventListeners() {
       const session = await window.supabaseClient.signIn(email, password);
       cloudPassword.value = '';
       renderCloudState(session);
-      // Automatically push any recordings still waiting to sync.
       syncPendingRecordings();
     } catch (err) {
       showCloudError(err.message || 'Sign-in failed.');
@@ -150,6 +404,7 @@ function setupEventListeners() {
   cloudSignOutBtn.addEventListener('click', async () => {
     await window.supabaseClient.signOut();
     renderCloudState(null);
+    setSelectedCustomer(null);
   });
 
   closeModalBtn.addEventListener('click', () => {
@@ -169,8 +424,80 @@ function setupEventListeners() {
       loadRecordingsList();
     }
   });
+
+  // ── Customer event listeners ────────────────────────────────────────────────
+
+  customerSearchInput.addEventListener('input', (e) => {
+    clearTimeout(searchDebounceTimer);
+    const val = e.target.value;
+    searchDebounceTimer = setTimeout(() => handleCustomerSearch(val), 300);
+  });
+
+  // Close search results when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#customerCard')) {
+      customerSearchResults.classList.add('hidden');
+    }
+  });
+
+  clearCustomerBtn.addEventListener('click', () => {
+    setSelectedCustomer(null);
+    customerSearchInput.value = '';
+  });
+
+  addCustomerBtn.addEventListener('click', () => {
+    addCustomerForm.classList.toggle('hidden');
+    customerSearchResults.classList.add('hidden');
+    addCustomerError.classList.add('hidden');
+  });
+
+  cancelAddCustomerBtn.addEventListener('click', () => {
+    addCustomerForm.classList.add('hidden');
+    addCustomerError.classList.add('hidden');
+  });
+
+  saveNewCustomerBtn.addEventListener('click', handleSaveNewCustomer);
+
+  // ── Audio upload event listeners ───────────────────────────────────────────
+
+  selectAudioFileBtn.addEventListener('click', () => {
+    audioFileInput.click();
+  });
+
+  audioFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    // Validate MIME type / extension
+    const ext = getFileExtension(file.name).toLowerCase();
+    const supported = ['mp3', 'wav', 'm4a', 'webm', 'flac', 'ogg', 'aac', 'wma'];
+    if (!supported.includes(ext)) {
+      showAlert(`Unsupported file format: .${ext}. Supported: ${supported.join(', ')}`);
+      audioFileInput.value = '';
+      return;
+    }
+
+    pendingUploadFile = file;
+    pendingUploadId = crypto.randomUUID();
+    showUploadConfirmPanel(file);
+  });
+
+  changeUploadCustomerBtn.addEventListener('click', () => {
+    // Scroll/focus customer search
+    customerSearchInput.focus();
+    customerSearchInput.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  cancelUploadBtn.addEventListener('click', () => {
+    hideUploadConfirmPanel();
+  });
+
+  confirmUploadBtn.addEventListener('click', handleConfirmUpload);
 }
 
+// ---------------------------------------------------------------------------
+// VAD meters
+// ---------------------------------------------------------------------------
 function updateVadMeters(energy) {
   const micPct = Math.round(energy.mic * 100);
   const remotePct = Math.round(energy.remote * 100);
@@ -205,6 +532,9 @@ function updateVadMeters(energy) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
 function showAlert(message) {
   alertText.textContent = message;
   alertBanner.classList.remove('hidden');
@@ -214,6 +544,9 @@ function hideAlert() {
   alertBanner.classList.add('hidden');
 }
 
+// ---------------------------------------------------------------------------
+// Meeting detection
+// ---------------------------------------------------------------------------
 async function detectActiveTabMeeting() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -237,7 +570,6 @@ async function detectActiveTabMeeting() {
     detectedPlatformBadge.textContent = detectedPlatform.name;
     detectedPlatformBadge.className = `platform-badge ${detectedPlatform.badgeClass}`;
 
-    // Query content script for WebRTC injector status
     if (tab.id) {
       chrome.tabs.sendMessage(tab.id, { type: 'GET_MEETING_INFO' }, (res) => {
         if (chrome.runtime.lastError || !res) {
@@ -263,6 +595,9 @@ async function detectActiveTabMeeting() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Recording status check
+// ---------------------------------------------------------------------------
 async function checkStatus() {
   try {
     const response = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
@@ -297,7 +632,7 @@ function showRecordingView(state) {
   const platformName = state.platform === 'google_meet' ? 'Google Meet' :
     state.platform === 'ms_teams' ? 'Microsoft Teams Web' :
     state.platform === 'zoom' ? 'Zoom Web' : 'Browser Meeting';
-  
+
   recPlatformName.textContent = platformName;
 
   const startTime = state.startedAt ? new Date(state.startedAt).getTime() : Date.now();
@@ -320,6 +655,9 @@ function updateTimerDisplay(startTime) {
 const localDisclosureBadge = document.getElementById('localDisclosureBadge');
 const remoteDisclosureBadge = document.getElementById('remoteDisclosureBadge');
 
+// ---------------------------------------------------------------------------
+// Recording start/stop — now includes customer_id in payload
+// ---------------------------------------------------------------------------
 async function handleStartRecording() {
   hideAlert();
   if (!activeTab || !activeTab.id) {
@@ -331,14 +669,28 @@ async function handleStartRecording() {
   startRecordBtn.innerHTML = '<span>Preparing recording...</span>';
 
   try {
+    let recordingCustomerId = selectedCustomer ? selectedCustomer.id : null;
+    if (!recordingCustomerId && cloudIsSignedIn && window.supabaseClient) {
+      try {
+        const shortId = crypto.randomUUID().slice(0, 8);
+        const tempCustomer = await window.supabaseClient.createCustomer({
+          name: `Unknown Customer - ${shortId}`,
+          tags: ['temporary', 'auto-detected']
+        });
+        recordingCustomerId = tempCustomer.id;
+      } catch (e) {
+        console.warn('Temporary customer pre-creation skipped:', e);
+      }
+    }
+
     const payload = {
       tabId: activeTab.id,
       platform: detectedPlatform ? detectedPlatform.platform : 'unknown',
       meetingUrl: activeTab.url,
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
+      customerId: recordingCustomerId
     };
 
-    // Transition prompt text during audio startup
     setTimeout(() => {
       if (startRecordBtn.disabled) {
         startRecordBtn.innerHTML = '<span>🔊 Playing recording disclosure...</span>';
@@ -358,7 +710,6 @@ async function handleStartRecording() {
       throw new Error(err);
     }
 
-    // Update Local and Remote disclosure badges accurately
     if (localDisclosureBadge) {
       localDisclosureBadge.textContent = '● Played locally';
       localDisclosureBadge.className = 'stream-status active';
@@ -409,6 +760,9 @@ async function handleStopRecording() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Recordings list
+// ---------------------------------------------------------------------------
 const SYNC_STATUS = {
   uploaded: { label: 'Synced', cls: 'uploaded' },
   uploading: { label: 'Uploading', cls: 'uploading' },
@@ -468,7 +822,7 @@ async function loadRecordingsList() {
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5"/>
             </svg>
           </button>` : ''}
-          <button class="icon-btn play-btn" data-id="${item.id}" title="Play & Speaker Attribution">
+          <button class="icon-btn play-btn" data-id="${item.id}" title="Play &amp; Speaker Attribution">
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
             </svg>
@@ -501,6 +855,7 @@ async function loadRecordingsList() {
 
 /**
  * Manually upload a locally stored recording to Supabase.
+ * Carries the currently selected customer_id if one is set.
  */
 async function syncRecording(id) {
   if (!window.supabaseClient || !window.recordingStore) return;
@@ -516,10 +871,30 @@ async function syncRecording(id) {
       return;
     }
 
+    // Carry customer selection into the uploaded record, or create temporary customer if none
+    let syncCustomerId = selectedCustomer ? selectedCustomer.id : (record.customerId || null);
+    if (!syncCustomerId && cloudIsSignedIn && window.supabaseClient) {
+      try {
+        const shortId = id.slice(0, 8);
+        const tempCustomer = await window.supabaseClient.createCustomer({
+          name: `Unknown Customer - ${shortId}`,
+          tags: ['temporary', 'auto-detected']
+        });
+        syncCustomerId = tempCustomer.id;
+      } catch (e) {
+        console.warn('Temporary customer creation for sync deferred:', e);
+      }
+    }
+
+    const enrichedRecord = {
+      ...record,
+      customerId: syncCustomerId
+    };
+
     await window.recordingStore.updateRecording(id, { status: 'uploading', lastError: null });
     await loadRecordingsList();
 
-    await window.supabaseClient.uploadRecording(record, record.blob);
+    await window.supabaseClient.uploadRecording(enrichedRecord, record.blob, 'webm');
     await window.recordingStore.updateRecording(id, { status: 'uploaded', lastError: null });
     syncToast('Recording synced to EchoCRM.');
   } catch (err) {
@@ -567,13 +942,11 @@ async function playRecording(id) {
     const { blob, ...meta } = record;
     modalMeta.textContent = JSON.stringify(meta, null, 2);
 
-    // Render Speaker Attribution Statistics
     const stats = record.speakerStats || {};
     statSalespersonVal.textContent = `${stats.salespersonPercent || 0}%`;
     statRemoteVal.textContent = `${stats.remotePercent || 0}%`;
     statOverlapVal.textContent = `${stats.overlapPercent || 0}%`;
 
-    // Render Segment Timeline
     const timeline = record.speakerTimeline || [];
     timelineList.innerHTML = '';
 

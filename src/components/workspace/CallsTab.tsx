@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Call, MeetingRecording } from '../../types'
+import { Call, MeetingRecording, AIPipelineResponse } from '../../types'
 import { PhoneCall, Calendar, Clock, Info, UploadCloud, Loader2, AlertCircle, Play, RotateCw, CheckCircle2 } from 'lucide-react'
 import { processAndSaveCall, processRecording } from '../../services/aiPipelineService'
 import { getRecordingPublicUrl } from '../../services/db'
@@ -10,9 +10,10 @@ interface CallsTabProps {
   recordings?: any[];
   loading: boolean;
   customerId: string;
+  onTranscriptResult?: (result: AIPipelineResponse) => void;
 }
 
-export const CallsTab: React.FC<CallsTabProps> = ({ calls, recordings = [], loading, customerId }) => {
+export const CallsTab: React.FC<CallsTabProps> = ({ calls, recordings = [], loading, customerId, onTranscriptResult }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
@@ -145,7 +146,7 @@ export const CallsTab: React.FC<CallsTabProps> = ({ calls, recordings = [], load
       </div>
 
       {/* Local AI Pipeline Integration Tester */}
-      <AIPipelineTester />
+      <AIPipelineTester onResult={onTranscriptResult} />
 
       {calls.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 border border-dashed border-slate-800 rounded-xl bg-slate-900/10 select-none">

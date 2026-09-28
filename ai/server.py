@@ -36,6 +36,7 @@ def startup_event():
 
 class ProcessCallRequest(BaseModel):
     audio_path: Optional[str] = None
+    customer_id: Optional[str] = None  # Pre-supplied customer UUID; skips AI customer identification when set
 
 @app.get("/health")
 def health_check():
@@ -62,7 +63,7 @@ def handle_process_call(request: ProcessCallRequest) -> Dict[str, Any]:
     
     # Default to sample audio if no path provided or relative name passed
     if not audio_path:
-        audio_path = os.path.join("test", "sample-audio", "sample.wav")
+        audio_path = os.path.join("test", "sample-audio", "Standard recording 18.mp3")
     elif not os.path.isabs(audio_path) and not os.path.exists(audio_path):
         alt_path = os.path.join("test", "sample-audio", audio_path)
         if os.path.exists(alt_path):
@@ -71,8 +72,17 @@ def handle_process_call(request: ProcessCallRequest) -> Dict[str, Any]:
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail=f"Audio file not found at path: {audio_path}")
 
+    # Purge all cached ai modules so changes to prompts, validator, and orchestrator are immediately active
+    for mod_name in list(sys.modules.keys()):
+        if mod_name.startswith("ai.") or mod_name == "ai":
+            del sys.modules[mod_name]
+
+    import ai.analysis.prompts as prompts
+    import ai.analysis.validator as validator
+    import ai.pipeline.orchestrator as orchestrator
+
     try:
-        result = process_call(audio_path)
+        result = orchestrator.process_call(audio_path, customer_id=request.customer_id)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Processing exception: {str(e)}")

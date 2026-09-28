@@ -4,16 +4,23 @@ import { MeetingRecording, Customer } from '../types'
 import { fetchMeetingRecordings, assignRecordingToCustomer, getRecordingPublicUrl } from '../services/db'
 import { processRecording } from '../services/aiPipelineService'
 import { useRealtimeSync } from '../contexts/RealtimeSyncContext'
-import { Mic, Link as LinkIcon, Calendar, Clock, RefreshCw, Play, Loader2, AlertCircle, CheckCircle2, RotateCw } from 'lucide-react'
+import { Mic, Link as LinkIcon, Calendar, Clock, RefreshCw, Play, Loader2, AlertCircle, CheckCircle2, RotateCw, UserX } from 'lucide-react'
 
 const getProcessingBadge = (status: string) => {
   const mappings: Record<string, { label: string; classes: string }> = {
-    processing: { label: 'Processing', classes: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-    processed: { label: 'Processed', classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    failed: { label: 'Failed', classes: 'bg-rose-500/10 text-rose-400 border-rose-500/20' }
+    processing:          { label: 'Processing',        classes: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+    transcribing:        { label: 'Transcribing',      classes: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+    analyzing:           { label: 'Analyzing',         classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    customer_resolving:  { label: 'Resolving Customer',classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    needs_customer:      { label: 'Needs Customer',    classes: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+    processed:           { label: 'Processed',         classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+    failed:              { label: 'Failed',             classes: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+    uploaded:            { label: 'Queued',             classes: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
   }
   return mappings[status] || null
 }
+
+const IN_PROGRESS_STATUSES = new Set(['uploading', 'processing', 'transcribing', 'analyzing', 'customer_resolving'])
 
 export const RecordingsPage: React.FC = () => {
   const [recordings, setRecordings] = useState<MeetingRecording[]>([])
@@ -28,7 +35,7 @@ export const RecordingsPage: React.FC = () => {
     try {
       const recs = await fetchMeetingRecordings()
       setRecordings(recs || [])
-      
+
       const { data: custs } = await supabase.from('customers').select('*').order('name')
       setCustomers(custs || [])
     } catch (e) {
@@ -81,7 +88,7 @@ export const RecordingsPage: React.FC = () => {
     } catch (e: any) {
       const message = e?.message || 'Processing failed'
       setProcessError({ id: rec.id, message })
-      setRecordings(prev => prev.map(r => r.id === rec.id ? { ...r, status: 'failed', last_error: message } : r))
+      setRecordings(prev => prev.map(r => r.id === rec.id ? { ...r, status: r.status === 'needs_customer' ? 'needs_customer' : 'failed', last_error: message } : r))
     } finally {
       setProcessingId(null)
     }
@@ -117,7 +124,7 @@ export const RecordingsPage: React.FC = () => {
         ) : (
           recordings.map(rec => (
             <div key={rec.id} className="glass-card p-5 rounded-xl border border-slate-800/60 flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center hover:border-slate-700/60 transition">
-              
+
               <div className="space-y-3 flex-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-brand-500/10 text-brand-400 rounded-lg">
@@ -125,12 +132,12 @@ export const RecordingsPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-200">
-                      {rec.platform === 'google_meet' ? 'Google Meet' : rec.platform === 'ms_teams' ? 'Microsoft Teams' : rec.platform === 'zoom' ? 'Zoom' : 'Meeting'}
+                      {rec.platform === 'google_meet' ? 'Google Meet' : rec.platform === 'ms_teams' ? 'Microsoft Teams' : rec.platform === 'zoom' ? 'Zoom' : rec.platform === 'audio_upload' ? 'Audio Upload' : 'Meeting'}
                     </h3>
                     <p className="text-xs text-slate-400 truncate max-w-sm">{rec.meeting_url || 'No URL'}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-4 text-xs text-slate-500 font-medium">
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
@@ -141,6 +148,25 @@ export const RecordingsPage: React.FC = () => {
                     <span>{formatDuration(rec.duration_seconds)}</span>
                   </div>
                 </div>
+
+                {/* Needs-customer resolution panel */}
+                {rec.status === 'needs_customer' && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 space-y-2">
+                    <div className="flex items-center gap-2 text-rose-300 text-xs font-semibold">
+                      <UserX className="w-4 h-4" />
+                      <span>Customer Assignment Required</span>
+                    </div>
+                    {rec.ai_customer_name && (
+                      <p className="text-xs text-slate-400">
+                        Transcript mentions: <span className="text-slate-200 font-medium">"{rec.ai_customer_name}"</span>
+                        {rec.candidate_customer_ids && rec.candidate_customer_ids.length > 1 && (
+                          <span className="ml-1 text-rose-300">({rec.candidate_customer_ids.length} customers match — ambiguous)</span>
+                        )}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500">Select a customer below and click Process to complete.</p>
+                  </div>
+                )}
 
                 <div className="w-full max-w-md pt-2">
                   <audio controls className="w-full h-8" src={getRecordingPublicUrl(rec.storage_path)} />
@@ -154,7 +180,7 @@ export const RecordingsPage: React.FC = () => {
                 <select
                   value={rec.customer_id || ''}
                   onChange={(e) => handleAssign(rec.id, e.target.value)}
-                  disabled={assigningId === rec.id || rec.status === 'processing'}
+                  disabled={assigningId === rec.id || IN_PROGRESS_STATUSES.has(rec.status)}
                   className="w-full bg-slate-900 border border-slate-800 text-sm text-slate-200 rounded-lg p-2.5 focus:border-brand-500 outline-none transition"
                 >
                   <option value="">-- Unassigned --</option>
@@ -169,28 +195,39 @@ export const RecordingsPage: React.FC = () => {
                     const badge = getProcessingBadge(rec.status)
                     return badge ? (
                       <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 border rounded uppercase tracking-wider ${badge.classes}`}>
-                        {rec.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin" />}
+                        {IN_PROGRESS_STATUSES.has(rec.status) && <Loader2 className="w-3 h-3 animate-spin" />}
                         {rec.status === 'processed' && <CheckCircle2 className="w-3 h-3" />}
-                        {rec.status === 'failed' && <AlertCircle className="w-3 h-3" />}
+                        {(rec.status === 'failed' || rec.status === 'needs_customer') && <AlertCircle className="w-3 h-3" />}
                         {badge.label}
                       </span>
                     ) : null
                   })()}
                   <button
                     onClick={() => handleProcess(rec)}
-                    disabled={!rec.customer_id || processingId === rec.id || rec.status === 'processing'}
-                    title={!rec.customer_id ? 'Assign a customer first' : 'Run local AI pipeline'}
+                    disabled={
+                      processingId === rec.id ||
+                      IN_PROGRESS_STATUSES.has(rec.status) ||
+                      // needs_customer requires a customer to be assigned first
+                      (rec.status === 'needs_customer' && !rec.customer_id)
+                    }
+                    title={
+                      rec.status === 'needs_customer' && !rec.customer_id
+                        ? 'Assign a customer first'
+                        : IN_PROGRESS_STATUSES.has(rec.status)
+                        ? 'Processing in progress...'
+                        : 'Run local AI pipeline'
+                    }
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-brand-600 hover:bg-brand-500 active:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-lg transition shadow-md"
                   >
-                    {processingId === rec.id ? (
+                    {processingId === rec.id || IN_PROGRESS_STATUSES.has(rec.status) ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         <span>Processing...</span>
                       </>
-                    ) : rec.status === 'failed' ? (
+                    ) : rec.status === 'failed' || rec.status === 'needs_customer' ? (
                       <>
                         <RotateCw className="w-3.5 h-3.5" />
-                        <span>Retry</span>
+                        <span>{rec.status === 'needs_customer' ? 'Process Now' : 'Retry'}</span>
                       </>
                     ) : rec.status === 'processed' ? (
                       <>

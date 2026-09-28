@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Call, Task, Deal, DealStage, CallSummary } from '../types'
+import { Call, Task, Deal, DealStage, CallSummary, TaskStatus } from '../types'
 import { 
   getCustomerCalls, 
   getCustomerTasks, 
@@ -22,7 +22,7 @@ const taskSortFn = (a: Task, b: Task) => {
   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
 };
 
-export type WorkspaceTab = 'overview' | 'calls' | 'tasks' | 'deals';
+export type WorkspaceTab = 'overview' | 'calls' | 'transcript' | 'tasks' | 'deals';
 
 export function useWorkspace(customerId: string) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview')
@@ -181,14 +181,14 @@ export function useWorkspace(customerId: string) {
   }, [subscribe, customerId])
 
   // Tasks CRUD operations
-  const addTask = async (description: string, dueDate?: string) => {
+  const addTask = async (description: string, dueDate?: string, status: TaskStatus = 'pending') => {
     try {
       setError(null)
       const newTask = await createTask({
         customer_id: customerId,
         description: description.trim(),
         due_date: dueDate || undefined,
-        status: 'pending'
+        status: status || 'pending'
       });
       setTasks((prev) => [...prev, newTask].sort((a, b) => {
         if (!a.due_date && !b.due_date) return 0;
@@ -202,12 +202,13 @@ export function useWorkspace(customerId: string) {
     }
   }
 
-  const editTask = async (taskId: string, description: string, dueDate?: string) => {
+  const editTask = async (taskId: string, description: string, dueDate?: string, status?: TaskStatus) => {
     try {
       setError(null)
       const updated = await updateTask(taskId, {
         description: description.trim(),
-        due_date: dueDate || undefined
+        due_date: dueDate || undefined,
+        status: status
       });
       setTasks((prev) => 
         prev.map((t) => (t.id === taskId ? updated : t))

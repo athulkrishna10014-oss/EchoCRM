@@ -14,8 +14,8 @@ const AI_SERVICE_URL = `http://127.0.0.1:${AI_SERVICE_PORT}`;
 function startAIService() {
   const serverScript = path.join(__dirname, 'ai', 'server.py');
   
-  // Try 'python' command
-  pythonProcess = spawn('python', [serverScript], {
+  // Wrap serverScript in quotes so Windows shell handles spaces in path correctly
+  pythonProcess = spawn('python', [`"${serverScript}"`], {
     cwd: __dirname,
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
     shell: true
@@ -132,7 +132,7 @@ function setupIPCHandlers() {
     }
   });
 
-  ipcMain.handle('ai:processCall', async (event, audioPath) => {
+  ipcMain.handle('ai:processCall', async (event, audioPath, customerId) => {
     try {
       const options = {
         hostname: '127.0.0.1',
@@ -141,7 +141,9 @@ function setupIPCHandlers() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       };
-      const res = await makeHTTPRequest(options, { audio_path: audioPath });
+      const payload = { audio_path: audioPath };
+      if (customerId) payload.customer_id = customerId;
+      const res = await makeHTTPRequest(options, payload);
       return res;
     } catch (err) {
       return {
@@ -155,7 +157,7 @@ function setupIPCHandlers() {
 
   ipcMain.handle('ai:processSampleCall', async () => {
     try {
-      const samplePath = path.join('test', 'sample-audio', 'sample.wav');
+      const samplePath = path.join('test', 'sample-audio', 'Standard recording 18.mp3');
       const options = {
         hostname: '127.0.0.1',
         port: AI_SERVICE_PORT,

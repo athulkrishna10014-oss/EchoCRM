@@ -902,3 +902,209 @@ body {
 .sync-tag.failed { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); }
 .sync-tag.local { color: #94a3b8; background: rgba(148, 163, 184, 0.1); border-color: rgba(148, 163, 184, 0.25); }
 .sync-btn { color: #6366f1; }
+
+/* ============================================================
+   Customer Card
+   ============================================================ */
+.customer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.customer-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-search-row input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.customer-search-row input:focus {
+  border-color: var(--border-focus);
+}
+
+.customer-results {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  max-height: 140px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.customer-result-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.customer-result-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.customer-result-item.no-results {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.selected-customer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-customer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  margin-top: 4px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.form-field input {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-field input:focus {
+  border-color: var(--border-focus);
+}
+
+.required {
+  color: var(--danger);
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================================
+   Audio Upload Card
+   ============================================================ */
+.upload-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.upload-confirm-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.upload-confirm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.upload-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.upload-value {
+  color: var(--text-main);
+  word-break: break-word;
+  flex: 1;
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #818cf8);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+#uploadProgressLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+}

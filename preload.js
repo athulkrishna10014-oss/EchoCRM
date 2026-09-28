@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 contextBridge.exposeInMainWorld('ai', {
   checkHealth: () => ipcRenderer.invoke('ai:checkHealth'),
-  processCall: (audioPath) => ipcRenderer.invoke('ai:processCall', audioPath),
+  processCall: (audioPath, customerId) => ipcRenderer.invoke('ai:processCall', audioPath, customerId),
   processSampleCall: () => ipcRenderer.invoke('ai:processSampleCall'),
 });
 

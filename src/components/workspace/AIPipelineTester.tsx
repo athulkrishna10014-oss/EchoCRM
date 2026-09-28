@@ -15,7 +15,11 @@ import {
   Cpu 
 } from 'lucide-react';
 
-export const AIPipelineTester: React.FC = () => {
+interface AIPipelineTesterProps {
+  onResult?: (response: AIPipelineResponse) => void;
+}
+
+export const AIPipelineTester: React.FC<AIPipelineTesterProps> = ({ onResult }) => {
   const [health, setHealth] = useState<AIHealthResponse | null>(null);
   const [checkingHealth, setCheckingHealth] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -51,9 +55,11 @@ export const AIPipelineTester: React.FC = () => {
         const res = await window.ai.processSampleCall();
         if (res.status === 'SUCCESS') {
           setResponse(res);
+          onResult?.(res);
         } else {
           setError(res.metadata?.errors?.join(', ') || `AI Pipeline returned status: ${res.status}`);
           setResponse(res);
+          onResult?.(res);
         }
       } else {
         setError('window.ai bridge unavailable. Launch EchoCRM inside Electron desktop client to run local AI processing.');
