@@ -4,12 +4,11 @@ import { useWorkspace } from '../hooks/useWorkspace'
 import { OverviewTab } from '../components/workspace/OverviewTab'
 import { CallsTab } from '../components/workspace/CallsTab'
 import { TasksTab } from '../components/workspace/TasksTab'
-import { DealsTab } from '../components/workspace/DealsTab'
 import { TranscriptTab } from '../components/workspace/TranscriptTab'
 import { TaskFormModal } from '../components/workspace/TaskFormModal'
 import { DeleteTaskDialog } from '../components/workspace/DeleteTaskDialog'
 import { exportCustomerCsv, exportCustomerPdf } from '../services/exportService'
-import { ChevronRight, ArrowLeft, User, PhoneCall, CheckSquare, TrendingUp, AlertCircle, Download, FileText, Loader2, Mic } from 'lucide-react'
+import { ChevronRight, ArrowLeft, User, PhoneCall, CheckSquare, AlertCircle, Download, FileText, Loader2, Mic } from 'lucide-react'
 
 interface CustomerWorkspacePageProps {
   customer: Customer;
@@ -26,7 +25,6 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
     calls,
     recordings,
     tasks,
-    deals,
     summaries,
     loading,
     error,
@@ -34,7 +32,6 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
     editTask,
     toggleTaskComplete,
     removeTask,
-    changeDealStage,
     editSummary
   } = useWorkspace(customer.id)
 
@@ -48,7 +45,7 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
 
   const [followUpTitle, setFollowUpTitle] = useState<string>('')
 
-  const exportPayload = { customer, calls, summaries, tasks, deals }
+  const exportPayload = { customer, calls, summaries, tasks }
 
   const handleExportCsv = () => {
     setExportError(null)
@@ -145,14 +142,6 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
             onViewTranscript={() => setActiveTab('transcript')}
           />
         )
-      case 'deals':
-        return (
-          <DealsTab
-            deals={deals}
-            loading={loading}
-            onChangeStage={changeDealStage}
-          />
-        )
       default:
         return null
     }
@@ -163,7 +152,6 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
     { id: 'calls', label: 'Calls', icon: PhoneCall },
     { id: 'transcript', label: 'Transcript', icon: Mic },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'deals', label: 'Deals', icon: TrendingUp }
   ] as const;
 
   return (
@@ -172,59 +160,63 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
       {/* 1. Header: Back button + Breadcrumbs */}
       <div className="flex items-center gap-4 shrink-0">
         <button
+          type="button"
           onClick={onBack}
-          className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-xl transition duration-150 active:scale-95"
+          aria-label="Back to Customers List"
+          className="p-2 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#F0D8CA]/40 text-[#817A72] hover:text-[#292522] rounded-xl transition duration-150 active:scale-95 shadow-xs"
           title="Back to Customers List"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-1.5 text-sm font-semibold">
-          <button onClick={onBack} className="text-slate-500 hover:text-slate-350 hover:underline">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <button type="button" onClick={onBack} className="text-[#817A72] hover:text-[#292522] transition">
             Customers
           </button>
-          <ChevronRight className="w-4 h-4 text-slate-650 shrink-0" />
-          <span className="text-white font-bold">{customer.name}</span>
+          <ChevronRight className="w-4 h-4 text-[#817A72]/60 shrink-0" />
+          <span className="text-[#292522] font-bold font-display">{customer.name}</span>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
           <button
+            type="button"
             onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#F0D8CA]/40 text-[#817A72] hover:text-[#292522] rounded-xl text-xs font-semibold transition shadow-xs"
             title="Export customer history as CSV"
           >
             <Download className="w-3.5 h-3.5" />
             <span>CSV</span>
           </button>
           <button
+            type="button"
             onClick={handleExportPdf}
             disabled={exportingPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#F0D8CA]/40 text-[#817A72] hover:text-[#292522] rounded-xl text-xs font-semibold transition disabled:opacity-50 shadow-xs"
             title="Export customer history as PDF"
           >
-            {exportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+            {exportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B85C38]" /> : <FileText className="w-3.5 h-3.5" />}
             <span>PDF</span>
           </button>
         </div>
       </div>
 
       {exportError && (
-        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-xs shrink-0">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#B94A48]/10 border border-[#B94A48]/20 text-[#B94A48] text-xs shrink-0">
+          <AlertCircle className="w-4 h-4 text-[#B94A48] shrink-0 mt-0.5" />
           <span>{exportError}</span>
         </div>
       )}
 
       {/* 2. Error Display Panel */}
       {error && (
-        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-xs shrink-0">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#B94A48]/10 border border-[#B94A48]/20 text-[#B94A48] text-xs shrink-0">
+          <AlertCircle className="w-4 h-4 text-[#B94A48] shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {/* 3. Workspace Tab Selection Header */}
-      <div className="flex border-b border-slate-905 shrink-0 gap-1.5">
+      <div className="flex border-b border-[#E8E1D8] shrink-0 gap-2">
         {tabItems.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -232,10 +224,10 @@ export const CustomerWorkspacePage: React.FC<CustomerWorkspacePageProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition border-b-2 flex items-center gap-2 ${
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition border-b-2 flex items-center gap-2 ${
                 isActive
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-450 hover:text-slate-300 hover:border-slate-800'
+                  ? 'border-[#B85C38] text-[#B85C38]'
+                  : 'border-transparent text-[#817A72] hover:text-[#292522] hover:border-[#E8E1D8]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />

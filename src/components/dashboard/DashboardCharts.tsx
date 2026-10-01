@@ -1,25 +1,12 @@
 import React from 'react'
-import { StageBreakdown, CallsPerDay } from '../../services/db'
-import { BarChart3, Activity } from 'lucide-react'
+import { CallsPerDay } from '../../services/db'
+import { Activity } from 'lucide-react'
 
 interface DashboardChartsProps {
-  stageBreakdown: StageBreakdown[]
   callsPerDay: CallsPerDay[]
 }
 
-const STAGE_COLORS: Record<string, string> = {
-  prospecting: 'bg-slate-500',
-  negotiation: 'bg-blue-500',
-  closing: 'bg-amber-500',
-  won: 'bg-emerald-500',
-  lost: 'bg-red-500'
-}
-
-const formatCurrency = (val: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
-
-export const DashboardCharts: React.FC<DashboardChartsProps> = ({ stageBreakdown, callsPerDay }) => {
-  const maxStageCount = Math.max(1, ...stageBreakdown.map((s) => s.count))
+export const DashboardCharts: React.FC<DashboardChartsProps> = ({ callsPerDay }) => {
   const maxCalls = Math.max(1, ...callsPerDay.map((c) => c.count))
 
   // Build an SVG polyline for calls-per-day
@@ -29,82 +16,67 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ stageBreakdown
   const points = callsPerDay
     .map((c, i) => {
       const x = i * stepX
-      const y = chartHeight - (c.count / maxCalls) * (chartHeight - 16) - 8
+      const y = chartHeight - (c.count / maxCalls) * (chartHeight - 20) - 10
       return `${x},${y}`
     })
     .join(' ')
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Deals by stage */}
-      <section className="glass-panel rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-brand-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">Deals by Stage</h2>
-        </div>
-
-        <div className="space-y-3">
-          {stageBreakdown.map((stage) => (
-            <div key={stage.stage} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-300 capitalize">{stage.stage}</span>
-                <span className="text-slate-500">
-                  {stage.count} · {formatCurrency(stage.value)}
-                </span>
-              </div>
-              <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${STAGE_COLORS[stage.stage] || 'bg-slate-500'}`}
-                  style={{ width: `${(stage.count / maxStageCount) * 100}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Calls per day */}
-      <section className="glass-panel rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-brand-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">Calls (last {callsPerDay.length} days)</h2>
-        </div>
-
-        {callsPerDay.every((c) => c.count === 0) ? (
-          <div className="py-10 text-center border border-dashed border-slate-800 rounded-xl">
-            <p className="text-sm text-slate-500">No calls logged in this period.</p>
+    <section className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-2xl p-6 space-y-5 shadow-[0_1px_3px_rgba(41,37,34,0.03)]">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#F0D8CA] text-[#B85C38] flex items-center justify-center">
+            <Activity className="w-4 h-4" />
           </div>
-        ) : (
-          <div className="overflow-x-auto">
+          <div>
+            <h2 className="text-sm font-bold text-[#292522]">Call Activity</h2>
+            <p className="text-xs text-[#817A72]">Past {callsPerDay.length} days recording volume</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-[#817A72]">
+          {callsPerDay.reduce((acc, c) => acc + c.count, 0)} Calls Logged
+        </span>
+      </div>
+
+      {callsPerDay.every((c) => c.count === 0) ? (
+        <div className="py-12 text-center border border-dashed border-[#E8E1D8] rounded-xl bg-[#F7F4EE]/50">
+          <p className="text-xs text-[#817A72]">No calls recorded in this 14-day window.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="overflow-x-auto pt-2">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-32" preserveAspectRatio="none">
               <defs>
-                <linearGradient id="callsFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgb(99,102,241)" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="rgb(99,102,241)" stopOpacity="0" />
+                <linearGradient id="callsFillTerracotta" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#B85C38" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#B85C38" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
               <polygon
                 points={`0,${chartHeight} ${points} ${chartWidth},${chartHeight}`}
-                fill="url(#callsFill)"
+                fill="url(#callsFillTerracotta)"
               />
-              <polyline points={points} fill="none" stroke="rgb(99,102,241)" strokeWidth="2" />
+              <polyline points={points} fill="none" stroke="#B85C38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               {callsPerDay.map((c, i) => (
                 <circle
                   key={c.date}
                   cx={i * stepX}
-                  cy={chartHeight - (c.count / maxCalls) * (chartHeight - 16) - 8}
-                  r="2.5"
-                  fill="rgb(129,140,248)"
+                  cy={chartHeight - (c.count / maxCalls) * (chartHeight - 20) - 10}
+                  r="3"
+                  fill="#FFFDF9"
+                  stroke="#B85C38"
+                  strokeWidth="2"
                 />
               ))}
             </svg>
-            <div className="flex justify-between text-[10px] text-slate-600 mt-1">
-              <span>{callsPerDay[0]?.date.slice(5)}</span>
-              <span>{callsPerDay[callsPerDay.length - 1]?.date.slice(5)}</span>
-            </div>
           </div>
-        )}
-      </section>
-    </div>
+          <div className="flex justify-between text-[10px] text-[#817A72] font-medium pt-1 border-t border-[#E8E1D8]">
+            <span>{callsPerDay[0]?.date.slice(5)}</span>
+            <span>14-day activity</span>
+            <span>{callsPerDay[callsPerDay.length - 1]?.date.slice(5)}</span>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

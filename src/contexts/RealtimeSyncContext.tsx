@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase/client'
-import { autoProcessRecording } from '../services/aiPipelineService'
+import { autoProcessRecording, recoverStaleRecordings, isRecordingStale } from '../services/aiPipelineService'
 import { MeetingRecording } from '../types'
 
 export type SyncStatus = 'connected' | 'connecting' | 'disconnected';
@@ -51,16 +51,20 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }
 
   /**
-   * Automatic processing trigger.
-   * When a meeting_recordings row arrives (INSERT or UPDATE) with status='uploaded',
-   * trigger the AI pipeline automatically. The autoProcessRecording function
-   * enforces idempotency via an atomic status claim.
-   *
-   * This handles both browser recordings and audio file uploads from the extension.
+   * Automatic processing and stale lock recovery trigger.
+   * When a meeting_recordings row arrives (INSERT or UPDATE):
+   * - If status is 'uploaded': triggers the AI pipeline automatically.
+   * - If status is in-progress but stale: recovers the lock and allows retry.
+   * The autoProcessRecording function enforces idempotency via an atomic status claim.
    */
   const handleAutoProcess = async (payload: any) => {
     const record = payload.new
-    if (!record || record.status !== 'uploaded') return
+    if (!record) return
+
+    const isUploaded = record.status === 'uploaded'
+    const isStale = isRecordingStale(record)
+
+    if (!isUploaded && !isStale) return
 
     // Require Electron context (local AI pipeline)
     if (!window.electronAPI?.downloadToTemp || !window.ai?.processCall) {
@@ -68,7 +72,7 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return
     }
 
-    console.log('[AutoProcess] Detected uploaded recording:', record.id)
+    console.log(`[AutoProcess] Detected recording for action (${isUploaded ? 'uploaded' : 'stale recovery'}):`, record.id)
     try {
       await autoProcessRecording(record as MeetingRecording)
     } catch (err) {
@@ -80,6 +84,18 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('Establishing Realtime Sync channel...');
     setStatus('connecting')
 
+    // On mount, recover any recordings left stuck in processing from previous sessions
+    recoverStaleRecordings().catch(err => {
+      console.error('[RealtimeSyncContext] Initial stale recovery sweep failed:', err);
+    });
+
+    // Periodic sweep every 5 minutes to prevent locks from remaining stuck permanently
+    const staleInterval = setInterval(() => {
+      recoverStaleRecordings().catch(err => {
+        console.error('[RealtimeSyncContext] Periodic stale recovery sweep failed:', err);
+      });
+    }, 5 * 60 * 1000);
+
     const channel = supabase.channel('public-db-sync')
 
     channel
@@ -89,7 +105,7 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
         (payload) => {
           broadcastEvent(payload)
 
-          // Auto-process uploaded recordings
+          // Auto-process uploaded recordings or recover stale recordings
           if (
             payload.table === 'meeting_recordings' &&
             (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')
@@ -113,7 +129,8 @@ export const RealtimeSyncProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return () => {
       console.log('Cleaning up Realtime Sync channel...');
-      supabase.removeChannel(channel)
+      clearInterval(staleInterval);
+      supabase.removeChannel(channel);
     };
   }, [])
 

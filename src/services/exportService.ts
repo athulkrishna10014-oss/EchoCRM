@@ -1,11 +1,10 @@
-import { Customer, Call, CallSummary, Task, Deal } from '../types'
+import { Customer, Call, CallSummary, Task } from '../types'
 
 export interface CustomerExportData {
   customer: Customer
   calls: Call[]
   summaries: CallSummary[]
   tasks: Task[]
-  deals: Deal[]
 }
 
 const escapeCsv = (value: unknown): string => {
@@ -24,10 +23,10 @@ const formatDateTime = (dateStr?: string) => {
 }
 
 /**
- * Build a sectioned CSV containing a customer's summaries, tasks and deals.
+ * Build a sectioned CSV containing a customer's summaries and tasks.
  */
 export function buildCustomerCsv(data: CustomerExportData): string {
-  const { customer, calls, summaries, tasks, deals } = data
+  const { customer, calls, summaries, tasks } = data
   const lines: string[] = []
 
   lines.push(toCsvRow(['EchoCRM Customer Export']))
@@ -38,7 +37,7 @@ export function buildCustomerCsv(data: CustomerExportData): string {
   lines.push(toCsvRow(['Exported At', new Date().toLocaleString('en-US')]))
   lines.push('')
 
-  lines.push(toCsvRow(['Type', 'Customer', 'Description', 'Stage / Status', 'Value', 'Date', 'Details']))
+  lines.push(toCsvRow(['Type', 'Customer', 'Description', 'Status', 'Date', 'Details']))
 
   summaries.forEach((summary) => {
     const call = calls.find((c) => c.id === summary.call_id)
@@ -46,7 +45,6 @@ export function buildCustomerCsv(data: CustomerExportData): string {
       'Call Summary',
       customer.name,
       summary.summary_text || '',
-      summary.deal_stage || '',
       '',
       formatDateTime(call?.started_at),
       `Sentiment: ${summary.sentiment || 'n/a'}`
@@ -59,20 +57,7 @@ export function buildCustomerCsv(data: CustomerExportData): string {
       customer.name,
       task.description,
       task.status,
-      '',
       formatDateTime(task.due_date),
-      ''
-    ]))
-  })
-
-  deals.forEach((deal) => {
-    lines.push(toCsvRow([
-      'Deal',
-      customer.name,
-      deal.product,
-      deal.stage,
-      deal.value ?? '',
-      formatDateTime(deal.expected_close_date),
       ''
     ]))
   })
@@ -104,14 +89,13 @@ export function exportCustomerCsv(data: CustomerExportData) {
  * Build a printable HTML document for the customer's history.
  */
 export function buildCustomerHtml(data: CustomerExportData): string {
-  const { customer, calls, summaries, tasks, deals } = data
+  const { customer, calls, summaries, tasks } = data
 
   const summaryRows = summaries.map((s) => {
     const call = calls.find((c) => c.id === s.call_id)
     return `<tr>
       <td>${call ? new Date(call.started_at).toLocaleDateString() : '—'}</td>
       <td>${(s.summary_text || '').replace(/</g, '&lt;')}</td>
-      <td>${s.deal_stage || '—'}</td>
       <td>${s.sentiment || '—'}</td>
     </tr>`
   }).join('')
@@ -120,13 +104,6 @@ export function buildCustomerHtml(data: CustomerExportData): string {
     <td>${(t.description || '').replace(/</g, '&lt;')}</td>
     <td>${t.status}</td>
     <td>${t.due_date ? new Date(t.due_date).toLocaleDateString() : '—'}</td>
-  </tr>`).join('')
-
-  const dealRows = deals.map((d) => `<tr>
-    <td>${(d.product || '').replace(/</g, '&lt;')}</td>
-    <td>${d.stage}</td>
-    <td>${d.value != null ? Number(d.value).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }) : '—'}</td>
-    <td>${d.expected_close_date ? new Date(d.expected_close_date).toLocaleDateString() : '—'}</td>
   </tr>`).join('')
 
   return `<!DOCTYPE html>
@@ -155,13 +132,10 @@ export function buildCustomerHtml(data: CustomerExportData): string {
   </div>
 
   <h2>Call Summaries</h2>
-  ${summaryRows ? `<table><thead><tr><th>Date</th><th>Summary</th><th>Deal Stage</th><th>Sentiment</th></tr></thead><tbody>${summaryRows}</tbody></table>` : '<p class="empty">No call summaries.</p>'}
+  ${summaryRows ? `<table><thead><tr><th>Date</th><th>Summary</th><th>Sentiment</th></tr></thead><tbody>${summaryRows}</tbody></table>` : '<p class="empty">No call summaries.</p>'}
 
   <h2>Tasks</h2>
   ${taskRows ? `<table><thead><tr><th>Task</th><th>Status</th><th>Due</th></tr></thead><tbody>${taskRows}</tbody></table>` : '<p class="empty">No tasks.</p>'}
-
-  <h2>Deals</h2>
-  ${dealRows ? `<table><thead><tr><th>Property / Listing</th><th>Stage</th><th>Value</th><th>Target Close</th></tr></thead><tbody>${dealRows}</tbody></table>` : '<p class="empty">No deals.</p>'}
 </body>
 </html>`
 }

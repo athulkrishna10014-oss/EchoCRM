@@ -21,7 +21,9 @@
     "*://teams.microsoft.com/*",
     "*://teams.live.com/*",
     "*://*.zoom.us/*",
-    "*://*.supabase.co/*"
+    "*://*.supabase.co/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js"

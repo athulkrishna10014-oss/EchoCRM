@@ -54,11 +54,12 @@ def create_png(width, height, color=(99, 102, 241, 255)):
 
     return png_signature + ihdr_chunk + idat_chunk + iend_chunk
 
-os.makedirs(r'c:\Users\nived\OneDrive\Desktop\mini project\new\echocrm-extension\icons', exist_ok=True)
+icons_dir = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(icons_dir, exist_ok=True)
 
 for size in [16, 48, 128]:
     png_bytes = create_png(size, size)
-    path = os.path.join(r'c:\Users\nived\OneDrive\Desktop\mini project\new\echocrm-extension\icons', f'icon{size}.png')
+    path = os.path.join(icons_dir, f'icon{size}.png')
     with open(path, 'wb') as f:
         f.write(png_bytes)
     print(f'Created {path} ({size}x{size})')

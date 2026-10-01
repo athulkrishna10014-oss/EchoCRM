@@ -417,23 +417,23 @@ export const GlobalTasksPage: React.FC = () => {
     switch (priority) {
       case 'high':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#B94A48] bg-[#B94A48]/10 border border-[#B94A48]/20 px-2 py-0.5 rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B94A48] animate-pulse" />
             <span>High</span>
           </span>
         )
       case 'low':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#64866A] bg-[#64866A]/10 border border-[#64866A]/20 px-2 py-0.5 rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#64866A]" />
             <span>Low</span>
           </span>
         )
       case 'medium':
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#C28A3D] bg-[#C28A3D]/10 border border-[#C28A3D]/20 px-2 py-0.5 rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C28A3D]" />
             <span>Medium</span>
           </span>
         )
@@ -443,9 +443,9 @@ export const GlobalTasksPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse select-none font-sans">
-        <div className="h-10 w-48 bg-slate-800 rounded-xl mb-4"></div>
+        <div className="h-10 w-48 bg-[#E8E1D8] rounded-xl mb-4"></div>
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-14 bg-slate-900/40 border border-slate-850 rounded-lg"></div>
+          <div key={i} className="h-14 bg-[#FFFDF9] border border-[#E8E1D8] rounded-2xl"></div>
         ))}
       </div>
     )
@@ -460,15 +460,15 @@ export const GlobalTasksPage: React.FC = () => {
       {/* 1. Header */}
       <div className="shrink-0 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Tasks Pipeline</h1>
-          <p className="text-sm text-slate-400 mt-1">Review and manage actionable commitments across all client accounts</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#292522] font-display">Tasks Pipeline</h1>
+          <p className="text-sm text-[#817A72] mt-1">Review and manage actionable commitments across all client accounts</p>
         </div>
       </div>
 
       {/* 2. Error Message */}
       {error && (
-        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-xs shrink-0">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#B94A48]/10 border border-[#B94A48]/20 text-[#B94A48] text-xs shrink-0 animate-fadeIn">
+          <AlertCircle className="w-4 h-4 text-[#B94A48] shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -477,12 +477,12 @@ export const GlobalTasksPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto min-h-0 space-y-6 pr-1">
         
         {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
-            <div className="p-4 bg-slate-800/40 text-slate-500 border border-slate-750 rounded-full mb-3">
+          <div className="flex flex-col items-center justify-center py-16 border border-dashed border-[#E8E1D8] rounded-2xl bg-[#FFFDF9]">
+            <div className="p-4 bg-[#F0D8CA]/60 text-[#B85C38] border border-[#B85C38]/20 rounded-2xl mb-4 shadow-xs">
               <CheckSquare className="w-8 h-8" />
             </div>
-            <h4 className="text-base font-bold text-slate-350">No tasks created yet</h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm text-center leading-relaxed">
+            <h4 className="text-lg font-bold text-[#292522] font-display">No tasks created yet</h4>
+            <p className="text-xs text-[#817A72] mt-1.5 max-w-sm text-center leading-relaxed">
               Create customer tasks by opening any client folder in the Customers directory and clicking the Tasks tab.
             </p>
           </div>
@@ -491,10 +491,10 @@ export const GlobalTasksPage: React.FC = () => {
             {/* Section A: Active Tasks */}
             {pendingTasks.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+                <h3 className="text-xs font-bold text-[#817A72] uppercase tracking-wider pl-1 font-display">
                   Active Tasks ({pendingTasks.length})
                 </h3>
-                <div className="bg-slate-900/20 border border-slate-800/60 rounded-xl divide-y divide-slate-800/60 overflow-hidden">
+                <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-2xl divide-y divide-[#E8E1D8] overflow-hidden shadow-xs">
                   {pendingTasks.map(task => {
                     const overdue = isOverdue(task)
                     const isExpanded = expandedTaskId === task.id
@@ -506,7 +506,7 @@ export const GlobalTasksPage: React.FC = () => {
                       <div 
                         key={task.id} 
                         className={`transition-colors duration-150 ${
-                          isExpanded ? 'bg-slate-900/40' : 'hover:bg-slate-900/25'
+                          isExpanded ? 'bg-[#F7F4EE]/40' : 'hover:bg-[#F7F4EE]/60'
                         }`}
                       >
                         {/* Main Row */}
@@ -529,22 +529,22 @@ export const GlobalTasksPage: React.FC = () => {
                                 e.stopPropagation()
                                 handleToggleComplete(task)
                               }}
-                              className="mt-0.5 text-slate-550 hover:text-brand-400 transition shrink-0"
+                              className="mt-0.5 text-[#817A72] hover:text-[#B85C38] transition shrink-0"
                               title="Mark Completed"
                             >
                               <Circle className="w-4.5 h-4.5 hover:scale-105 transition-transform" />
                             </button>
                             <div className="min-w-0 space-y-1.5 flex-1">
                               <p className={`text-sm leading-snug break-words transition-all font-medium ${
-                                isExpanded ? 'text-brand-300 font-semibold' : 'text-slate-200 group-hover:text-white'
+                                isExpanded ? 'text-[#B85C38] font-semibold' : 'text-[#292522] group-hover:text-[#B85C38]'
                               }`}>
                                 {content.title}
                               </p>
                               <div className="flex flex-wrap items-center gap-2.5">
                                 {/* Customer tag */}
                                 {task.customer?.name && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-450 uppercase tracking-wider">
-                                    <Building2 className="w-3.5 h-3.5 text-slate-600" />
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#817A72] uppercase tracking-wider">
+                                    <Building2 className="w-3.5 h-3.5 text-[#817A72]" />
                                     <span>{task.customer.name}</span>
                                   </span>
                                 )}
@@ -554,7 +554,7 @@ export const GlobalTasksPage: React.FC = () => {
 
                                 {/* Status badge if In Progress */}
                                 {content.taskStatus === 'in_progress' && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#C28A3D] bg-[#C28A3D]/10 border border-[#C28A3D]/20 px-1.5 py-0.5 rounded">
                                     <span>In Progress</span>
                                   </span>
                                 )}
@@ -562,12 +562,12 @@ export const GlobalTasksPage: React.FC = () => {
                                 {/* Due Date */}
                                 {task.due_date && (
                                   <span className={`inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide ${
-                                    overdue ? 'text-red-400 font-bold' : 'text-slate-500'
+                                    overdue ? 'text-[#B94A48] font-bold' : 'text-[#817A72]'
                                   }`}>
                                     <Calendar className="w-3.5 h-3.5 shrink-0" />
                                     <span>Due: {formatDate(task.due_date)}</span>
                                     {overdue && (
-                                      <span className="bg-red-500/15 border border-red-500/25 text-red-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded ml-1">
+                                      <span className="bg-[#B94A48]/15 border border-[#B94A48]/25 text-[#B94A48] text-[8px] font-extrabold px-1.5 py-0.5 rounded ml-1">
                                         Overdue
                                       </span>
                                     )}
@@ -576,15 +576,15 @@ export const GlobalTasksPage: React.FC = () => {
 
                                 {/* Subtasks summary pill */}
                                 {content.subtasks.length > 0 && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/60 border border-slate-750 px-1.5 py-0.5 rounded">
-                                    <ListTodo className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#817A72] bg-[#F7F4EE] border border-[#E8E1D8] px-1.5 py-0.5 rounded">
+                                    <ListTodo className="w-2.5 h-2.5 shrink-0 text-[#817A72]" />
                                     <span>{completedSubtasksCount}/{content.subtasks.length} actions</span>
                                   </span>
                                 )}
 
                                 {/* AI Call Task badge */}
                                 {task.call_id && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand-400/80 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#B85C38]/80 bg-[#F0D8CA]/60 border border-[#B85C38]/20 px-1.5 py-0.5 rounded">
                                     <Sparkles className="w-2.5 h-2.5 shrink-0" />
                                     <span>AI Call Task</span>
                                   </span>
@@ -600,7 +600,7 @@ export const GlobalTasksPage: React.FC = () => {
                                 e.stopPropagation()
                                 handleEditClick(task)
                               }}
-                              className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              className="p-1.5 text-[#817A72] hover:text-[#B85C38] hover:bg-[#F7F4EE] rounded-lg transition opacity-0 group-hover:opacity-100"
                               title="Edit Task"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -610,14 +610,14 @@ export const GlobalTasksPage: React.FC = () => {
                                 e.stopPropagation()
                                 handleDeleteClick(task)
                               }}
-                              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              className="p-1.5 text-[#817A72] hover:text-[#B94A48] hover:bg-[#B94A48]/10 rounded-lg transition opacity-0 group-hover:opacity-100"
                               title="Delete Task"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                             <div 
-                              className={`p-1 text-slate-500 group-hover:text-slate-300 rounded transition-transform duration-200 ${
-                                isExpanded ? 'rotate-180 text-brand-400' : ''
+                              className={`p-1 text-[#817A72] group-hover:text-[#292522] rounded transition-transform duration-200 ${
+                                isExpanded ? 'rotate-180 text-[#B85C38]' : ''
                               }`}
                               title={isExpanded ? 'Collapse' : 'Expand Details'}
                             >
@@ -628,14 +628,14 @@ export const GlobalTasksPage: React.FC = () => {
 
                         {/* Expanded Detailed Description Panel */}
                         {isExpanded && (
-                          <div className="px-5 pb-5 pt-2 border-t border-slate-800/60 bg-slate-950/30 space-y-4 animate-fadeIn">
+                          <div className="px-5 pb-5 pt-2 border-t border-[#E8E1D8] bg-[#F7F4EE]/40 space-y-4 animate-fadeIn">
                             
                             {/* Priority & Status Controls Bar */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/60 border border-slate-800/80 rounded-lg">
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#FFFDF9] border border-[#E8E1D8] rounded-lg">
                               {/* Priority Switcher */}
                               <div className="flex items-center gap-1.5 text-xs">
-                                <Flag className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">Priority:</span>
+                                <Flag className="w-3.5 h-3.5 text-[#817A72] shrink-0" />
+                                <span className="text-[11px] text-[#817A72] font-bold uppercase tracking-wider mr-1">Priority:</span>
                                 <div className="flex items-center gap-1">
                                   {(['low', 'medium', 'high'] as TaskPriority[]).map((p) => (
                                     <button
@@ -644,11 +644,11 @@ export const GlobalTasksPage: React.FC = () => {
                                       className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition border ${
                                         content.priority === p
                                           ? p === 'high' 
-                                            ? 'bg-red-500/20 text-red-300 border-red-500/40 shadow-sm'
+                                            ? 'bg-[#B94A48]/15 text-[#B94A48] border-[#B94A48]/35 shadow-xs'
                                             : p === 'medium'
-                                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                                          : 'bg-slate-950/40 text-slate-500 border-slate-800 hover:text-slate-300 hover:bg-slate-800'
+                                              ? 'bg-[#C28A3D]/15 text-[#C28A3D] border-[#C28A3D]/35 shadow-xs'
+                                              : 'bg-[#64866A]/15 text-[#64866A] border-[#64866A]/40 shadow-sm'
+                                          : 'bg-[#F7F4EE] text-[#817A72] border-[#E8E1D8] hover:text-[#292522] hover:bg-[#FFFDF9]'
                                       }`}
                                     >
                                       {p}
@@ -659,7 +659,7 @@ export const GlobalTasksPage: React.FC = () => {
 
                               {/* Status Switcher */}
                               <div className="flex items-center gap-1.5 text-xs">
-                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1">Status:</span>
+                                <span className="text-[11px] text-[#817A72] font-bold uppercase tracking-wider mr-1">Status:</span>
                                 <div className="flex items-center gap-1">
                                   {(['pending', 'in_progress', 'done'] as const).map((st) => (
                                     <button
@@ -668,11 +668,11 @@ export const GlobalTasksPage: React.FC = () => {
                                       className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition border ${
                                         content.taskStatus === st
                                           ? st === 'done'
-                                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                            ? 'bg-[#64866A]/15 text-[#64866A] border-[#64866A]/35'
                                             : st === 'in_progress'
-                                              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                                              : 'bg-slate-800 text-slate-200 border-slate-700'
-                                          : 'bg-slate-950/40 text-slate-500 border-slate-800 hover:text-slate-300 hover:bg-slate-800'
+                                              ? 'bg-[#F0D8CA] text-[#B85C38] border-[#B85C38]/40'
+                                              : 'bg-[#FFFDF9] text-[#292522] border-[#E8E1D8]'
+                                          : 'bg-[#F7F4EE] text-[#817A72] border-[#E8E1D8] hover:text-[#292522] hover:bg-[#FFFDF9]'
                                       }`}
                                     >
                                       {st === 'in_progress' ? 'In Progress' : st}
@@ -683,22 +683,22 @@ export const GlobalTasksPage: React.FC = () => {
                             </div>
 
                             {/* 1. Full Description Card */}
-                            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-4 relative shadow-inner space-y-2">
+                            <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-lg p-4 relative shadow-inner space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                  <FileText className="w-3.5 h-3.5 text-brand-400" />
+                                <span className="text-[10px] font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5 text-[#B85C38]" />
                                   <span>Detailed Description</span>
                                 </span>
 
                                 <button
                                   onClick={(e) => handleCopyDescription(e, content.details, task.id)}
-                                  className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1 rounded-md transition border border-slate-750"
+                                  className="flex items-center gap-1.5 text-[11px] text-[#817A72] hover:text-[#292522] bg-[#F7F4EE] hover:bg-[#FFFDF9] px-2.5 py-1 rounded-md transition border border-[#E8E1D8]"
                                   title="Copy detailed task description"
                                 >
                                   {copiedTaskId === task.id ? (
                                     <>
-                                      <Check className="w-3 h-3 text-emerald-400" />
-                                      <span className="text-emerald-400 font-semibold">Copied!</span>
+                                      <Check className="w-3 h-3 text-[#64866A]" />
+                                      <span className="text-[#64866A] font-semibold">Copied!</span>
                                     </>
                                   ) : (
                                     <>
@@ -709,17 +709,17 @@ export const GlobalTasksPage: React.FC = () => {
                                 </button>
                               </div>
 
-                              <p className="text-sm text-slate-100 font-normal leading-relaxed whitespace-pre-wrap select-text">
+                              <p className="text-sm text-[#292522] font-normal leading-relaxed whitespace-pre-wrap select-text">
                                 {content.details}
                               </p>
                             </div>
 
                             {/* 2. Key Context (Dynamic Extracted Information) */}
                             {Object.keys(content.keyContext).length > 0 && (
-                              <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3.5 space-y-2.5">
+                              <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-lg p-3.5 space-y-2.5">
                                 <div className="flex items-center gap-1.5">
-                                  <Info className="w-3.5 h-3.5 text-brand-400" />
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <Info className="w-3.5 h-3.5 text-[#B85C38]" />
+                                  <span className="text-[10px] font-bold text-[#817A72] uppercase tracking-wider">
                                     Key Context & Specifications
                                   </span>
                                 </div>
@@ -728,12 +728,12 @@ export const GlobalTasksPage: React.FC = () => {
                                   {Object.entries(content.keyContext).map(([key, val]) => (
                                     <div 
                                       key={key} 
-                                      className="p-2.5 bg-slate-950/60 border border-slate-850 rounded-lg space-y-1"
+                                      className="p-2.5 bg-[#F7F4EE] border border-[#E8E1D8] rounded-lg space-y-1"
                                     >
-                                      <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider truncate">
+                                      <p className="text-[10px] font-bold text-[#817A72] uppercase tracking-wider truncate">
                                         {key}
                                       </p>
-                                      <p className="text-xs font-medium text-slate-200 break-words">
+                                      <p className="text-xs font-medium text-[#292522] break-words">
                                         {val}
                                       </p>
                                     </div>
@@ -743,15 +743,15 @@ export const GlobalTasksPage: React.FC = () => {
                             )}
 
                             {/* 3. Next Actions / Subtasks Checklist */}
-                            <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3.5 space-y-3">
+                            <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-lg p-3.5 space-y-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5">
-                                  <ListTodo className="w-3.5 h-3.5 text-brand-400" />
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <ListTodo className="w-3.5 h-3.5 text-[#B85C38]" />
+                                  <span className="text-[10px] font-bold text-[#817A72] uppercase tracking-wider">
                                     Next Actions & Checklist
                                   </span>
                                   {content.subtasks.length > 0 && (
-                                    <span className="text-[10px] font-semibold text-slate-500 ml-1">
+                                    <span className="text-[10px] font-semibold text-[#817A72] ml-1">
                                       ({completedSubtasksCount} of {content.subtasks.length} done)
                                     </span>
                                   )}
@@ -765,8 +765,8 @@ export const GlobalTasksPage: React.FC = () => {
                                       key={st.id}
                                       className={`flex items-center justify-between p-2 rounded-lg border transition group/st ${
                                         st.completed 
-                                          ? 'bg-slate-950/40 border-slate-850 text-slate-500' 
-                                          : 'bg-slate-950/80 border-slate-800 text-slate-200 hover:border-slate-700'
+                                          ? 'bg-[#F7F4EE] border-[#E8E1D8] text-[#817A72]' 
+                                          : 'bg-[#FFFDF9] border-[#E8E1D8] text-[#292522] hover:border-[#E8E1D8]'
                                       }`}
                                     >
                                       <label className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer select-none">
@@ -774,16 +774,16 @@ export const GlobalTasksPage: React.FC = () => {
                                           type="checkbox"
                                           checked={st.completed}
                                           onChange={() => handleToggleSubtask(task, st.id)}
-                                          className="rounded border-slate-700 text-brand-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 cursor-pointer"
+                                          className="rounded border-[#E8E1D8] text-[#B85C38] focus:ring-0 focus:ring-offset-0 bg-[#FFFDF9] cursor-pointer"
                                         />
-                                        <span className={`text-xs ${st.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                                        <span className={`text-xs ${st.completed ? 'line-through text-[#817A72]' : 'text-[#292522]'}`}>
                                           {st.title}
                                         </span>
                                       </label>
 
                                       <button
                                         onClick={() => handleDeleteSubtask(task, st.id)}
-                                        className="p-1 text-slate-600 hover:text-red-400 rounded transition opacity-0 group-hover/st:opacity-100"
+                                        className="p-1 text-[#817A72] hover:text-[#B94A48] rounded transition opacity-0 group-hover/st:opacity-100"
                                         title="Remove subtask"
                                       >
                                         <Trash2 className="w-3 h-3" />
@@ -792,7 +792,7 @@ export const GlobalTasksPage: React.FC = () => {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-xs text-slate-500 italic">No specific subtasks defined.</p>
+                                <p className="text-xs text-[#817A72] italic">No specific subtasks defined.</p>
                               )}
 
                               <div className="flex items-center gap-2 pt-1">
@@ -807,12 +807,12 @@ export const GlobalTasksPage: React.FC = () => {
                                       handleAddSubtask(task)
                                     }
                                   }}
-                                  className="flex-1 px-3 py-1.5 bg-slate-950/90 border border-slate-800 focus:border-brand-500/80 focus:outline-none rounded-lg text-slate-200 text-xs transition placeholder:text-slate-600"
+                                  className="flex-1 px-3 py-1.5 bg-[#FFFDF9] border border-[#E8E1D8] focus:border-[#B85C38] focus:outline-none rounded-lg text-[#292522] text-xs transition placeholder:text-[#817A72]"
                                 />
                                 <button
                                   onClick={() => handleAddSubtask(task)}
                                   disabled={!(newSubtaskInputs[task.id] || '').trim()}
-                                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-40"
+                                  className="px-3 py-1.5 bg-[#FFFDF9] hover:bg-[#F0D8CA] text-[#292522] border border-[#E8E1D8] rounded-lg text-xs font-semibold transition disabled:opacity-40"
                                 >
                                   Add Action
                                 </button>
@@ -821,13 +821,13 @@ export const GlobalTasksPage: React.FC = () => {
 
                             {/* 4. AI Recommendation */}
                             {content.recommendation && (
-                              <div className="p-3 bg-brand-500/5 border border-brand-500/20 rounded-lg flex items-start gap-2.5 text-xs">
-                                <Sparkles className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
+                              <div className="p-3 bg-[#F0D8CA]/30 border border-[#B85C38]/20 rounded-lg flex items-start gap-2.5 text-xs">
+                                <Sparkles className="w-4 h-4 text-[#B85C38] shrink-0 mt-0.5" />
                                 <div className="space-y-0.5 min-w-0">
-                                  <p className="text-[10px] font-bold text-brand-300 uppercase tracking-wider">
+                                  <p className="text-[10px] font-bold text-[#B85C38] uppercase tracking-wider">
                                     AI Recommendation
                                   </p>
-                                  <p className="text-xs text-brand-100/90 leading-relaxed">
+                                  <p className="text-xs text-[#292522] leading-relaxed">
                                     {content.recommendation}
                                   </p>
                                 </div>
@@ -837,36 +837,36 @@ export const GlobalTasksPage: React.FC = () => {
                             {/* 5. Detailed Metadata Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                               {/* Customer */}
-                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
-                                <Building2 className="w-4 h-4 text-brand-400 shrink-0" />
+                              <div className="flex items-center gap-2.5 p-2.5 bg-[#FFFDF9]/50 border border-[#E8E1D8] rounded-lg">
+                                <Building2 className="w-4 h-4 text-[#B85C38] shrink-0" />
                                 <div className="min-w-0">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Account / Client</p>
-                                  <p className="text-xs font-semibold text-slate-200 truncate">
+                                  <p className="text-[10px] text-[#817A72] font-bold uppercase tracking-wider">Account / Client</p>
+                                  <p className="text-xs font-semibold text-[#292522] truncate">
                                     {task.customer?.name || 'Customer Account'}
                                   </p>
                                 </div>
                               </div>
 
                               {/* Due Date */}
-                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
-                                <Calendar className={`w-4 h-4 shrink-0 ${overdue ? 'text-red-400' : 'text-brand-400'}`} />
+                              <div className="flex items-center gap-2.5 p-2.5 bg-[#FFFDF9]/50 border border-[#E8E1D8] rounded-lg">
+                                <Calendar className={`w-4 h-4 shrink-0 ${overdue ? 'text-[#B94A48]' : 'text-[#B85C38]'}`} />
                                 <div className="min-w-0">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Scheduled Deadline</p>
-                                  <p className={`text-xs font-semibold ${overdue ? 'text-red-400 font-bold' : 'text-slate-200'}`}>
+                                  <p className="text-[10px] text-[#817A72] font-bold uppercase tracking-wider">Scheduled Deadline</p>
+                                  <p className={`text-xs font-semibold ${overdue ? 'text-[#B94A48] font-bold' : 'text-[#292522]'}`}>
                                     {formatDetailedDate(task.due_date)}
                                     {relativeDue && (
-                                      <span className="ml-1 text-[10px] text-slate-400 font-normal">({relativeDue})</span>
+                                      <span className="ml-1 text-[10px] text-[#817A72] font-normal">({relativeDue})</span>
                                     )}
                                   </p>
                                 </div>
                               </div>
 
                               {/* Created At */}
-                              <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/50 border border-slate-800/80 rounded-lg">
-                                <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-2.5 p-2.5 bg-[#FFFDF9]/50 border border-[#E8E1D8] rounded-lg">
+                                <Clock className="w-4 h-4 text-[#817A72] shrink-0" />
                                 <div className="min-w-0">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Created</p>
-                                  <p className="text-xs text-slate-300">
+                                  <p className="text-[10px] text-[#817A72] font-bold uppercase tracking-wider">Created</p>
+                                  <p className="text-xs text-[#292522]">
                                     {formatDateTime(task.created_at) || 'Recently'}
                                   </p>
                                 </div>
@@ -875,8 +875,8 @@ export const GlobalTasksPage: React.FC = () => {
 
                             {/* 6. Quick Contact Actions */}
                             {task.customer && (task.customer.phone || task.customer.email) && (
-                              <div className="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-800/80 rounded-lg text-xs">
-                                <span className="text-[11px] text-slate-400">Direct Outreach:</span>
+                              <div className="flex items-center justify-between p-2.5 bg-[#F7F4EE]/40 border border-[#E8E1D8] rounded-lg text-xs">
+                                <span className="text-[11px] text-[#817A72]">Direct Outreach:</span>
                                 <div className="flex items-center gap-1.5">
                                   {task.customer.phone && (
                                     <>
@@ -884,14 +884,14 @@ export const GlobalTasksPage: React.FC = () => {
                                         href={`https://wa.me/${task.customer.phone.replace(/[^0-9]/g, '')}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 transition"
+                                        className="flex items-center gap-1 text-[10px] font-semibold text-[#64866A] bg-[#64866A]/10 hover:bg-[#64866A]/20 px-2 py-1 rounded border border-[#64866A]/20 transition"
                                       >
                                         <MessageSquare className="w-3 h-3" />
                                         <span>WhatsApp</span>
                                       </a>
                                       <a
                                         href={`tel:${task.customer.phone}`}
-                                        className="flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded border border-blue-500/20 transition"
+                                        className="flex items-center gap-1 text-[10px] font-semibold text-[#C28A3D] bg-[#C28A3D]/10 hover:bg-[#C28A3D]/20 px-2 py-1 rounded border border-[#C28A3D]/20 transition"
                                       >
                                         <Phone className="w-3 h-3" />
                                         <span>Call</span>
@@ -901,7 +901,7 @@ export const GlobalTasksPage: React.FC = () => {
                                   {task.customer.email && (
                                     <a
                                       href={`mailto:${task.customer.email}`}
-                                      className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 bg-slate-800 hover:bg-slate-750 px-2 py-1 rounded border border-slate-700 transition"
+                                      className="flex items-center gap-1 text-[10px] font-semibold text-[#292522] bg-[#FFFDF9] hover:bg-[#F7F4EE] px-2 py-1 rounded border border-[#E8E1D8] transition"
                                     >
                                       <Mail className="w-3 h-3" />
                                       <span>Email</span>
@@ -913,16 +913,16 @@ export const GlobalTasksPage: React.FC = () => {
 
                             {/* 7. Activity History */}
                             {content.activity.length > 0 && (
-                              <div className="bg-slate-900/30 border border-slate-850 rounded-lg p-3 space-y-2">
-                                <div className="flex items-center gap-1.5 text-slate-450">
+                              <div className="bg-[#FFFDF9]/30 border border-[#E8E1D8] rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-[#817A72]">
                                   <History className="w-3.5 h-3.5" />
                                   <span className="text-[10px] font-bold uppercase tracking-wider">Activity History</span>
                                 </div>
-                                <div className="space-y-1.5 pl-2 border-l border-slate-800">
+                                <div className="space-y-1.5 pl-2 border-l border-[#E8E1D8]">
                                   {content.activity.slice(-4).map((act) => (
-                                    <div key={act.id} className="text-[11px] text-slate-400 flex items-baseline justify-between gap-2">
+                                    <div key={act.id} className="text-[11px] text-[#817A72] flex items-baseline justify-between gap-2">
                                       <span>{act.description}</span>
-                                      <span className="text-[10px] text-slate-550 shrink-0">
+                                      <span className="text-[10px] text-[#817A72] shrink-0">
                                         {formatDateTime(act.timestamp)}
                                       </span>
                                     </div>
@@ -936,7 +936,7 @@ export const GlobalTasksPage: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleToggleComplete(task)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-semibold transition"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#64866A]/10 border border-[#64866A]/25 text-[#64866A] hover:bg-[#64866A]/20 rounded-lg text-xs font-semibold transition"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>Mark Completed</span>
@@ -944,7 +944,7 @@ export const GlobalTasksPage: React.FC = () => {
 
                                 <button
                                   onClick={() => handleCreateFollowUp(task)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/25 text-brand-300 rounded-lg text-xs font-semibold transition"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F0D8CA]/60 hover:bg-[#F0D8CA] border border-[#B85C38]/30 text-[#B85C38] rounded-lg text-xs font-semibold transition"
                                 >
                                   <ArrowRightCircle className="w-3.5 h-3.5" />
                                   <span>Create Follow-up</span>
@@ -954,14 +954,14 @@ export const GlobalTasksPage: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleEditClick(task)}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#FFFDF9] text-[#292522] hover:text-[#B85C38] rounded-lg text-xs font-medium transition"
                                 >
                                   <Edit2 className="w-3 h-3" />
                                   <span>Edit</span>
                                 </button>
                                 <button
                                   onClick={() => handleDeleteClick(task)}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-950/20 border border-red-900/30 hover:bg-red-950/40 text-red-400 rounded-lg text-xs font-medium transition"
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[#B94A48]/10 border border-[#B94A48]/20 hover:bg-[#B94A48]/20 text-[#B94A48] rounded-lg text-xs font-medium transition"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                   <span>Delete</span>
@@ -981,10 +981,10 @@ export const GlobalTasksPage: React.FC = () => {
             {/* Section B: Completed Tasks */}
             {completedTasks.length > 0 && (
               <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+                <h3 className="text-xs font-bold text-[#817A72] uppercase tracking-wider pl-1 font-display">
                   Completed Tasks ({completedTasks.length})
                 </h3>
-                <div className="bg-slate-900/20 border border-slate-800/60 rounded-xl divide-y divide-slate-800/60 overflow-hidden opacity-85 hover:opacity-100 transition-opacity duration-200">
+                <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-2xl divide-y divide-[#E8E1D8] overflow-hidden shadow-xs">
                   {completedTasks.map(task => {
                     const isExpanded = expandedTaskId === task.id
                     const content = parseTaskContent(task)
@@ -992,8 +992,8 @@ export const GlobalTasksPage: React.FC = () => {
                     return (
                       <div 
                         key={task.id} 
-                        className={`transition-colors duration-150 bg-slate-950/10 ${
-                          isExpanded ? 'bg-slate-900/40' : 'hover:bg-slate-900/25'
+                        className={`transition-colors duration-150 bg-[#F7F4EE]/20 ${
+                          isExpanded ? 'bg-[#F7F4EE]/40' : 'hover:bg-[#F7F4EE]/60'
                         }`}
                       >
                         <div
@@ -1015,25 +1015,25 @@ export const GlobalTasksPage: React.FC = () => {
                                 e.stopPropagation()
                                 handleToggleComplete(task)
                               }}
-                              className="mt-0.5 text-brand-500 shrink-0"
+                              className="mt-0.5 text-[#B85C38] shrink-0"
                               title="Mark Pending"
                             >
-                              <CheckCircle2 className="w-4.5 h-4.5 fill-brand-500/10" />
+                              <CheckCircle2 className="w-4.5 h-4.5 text-[#64866A]" />
                             </button>
                             <div className="min-w-0 space-y-1.5 flex-1">
-                              <p className="text-sm font-normal text-slate-500 line-through leading-snug break-words">
+                              <p className="text-sm font-normal text-[#817A72] line-through leading-snug break-words">
                                 {content.title}
                               </p>
                               <div className="flex items-center gap-3">
                                 {task.customer?.name && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                                    <Building2 className="w-3.5 h-3.5 text-slate-700" />
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#817A72] uppercase tracking-wider">
+                                    <Building2 className="w-3.5 h-3.5 text-[#817A72]" />
                                     <span>{task.customer.name}</span>
                                   </span>
                                 )}
                                 {renderPriorityPill(content.priority)}
                                 {task.due_date && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 tracking-wide">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#817A72] tracking-wide">
                                     <Calendar className="w-3.5 h-3.5 shrink-0" />
                                     <span>Completed</span>
                                   </span>
@@ -1048,14 +1048,14 @@ export const GlobalTasksPage: React.FC = () => {
                                 e.stopPropagation()
                                 handleDeleteClick(task)
                               }}
-                              className="p-1.5 text-slate-650 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition opacity-0 group-hover:opacity-100"
+                              className="p-1.5 text-[#817A72] hover:text-[#B94A48] hover:bg-[#B94A48]/10 rounded-lg transition opacity-0 group-hover:opacity-100"
                               title="Delete Task"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                             <div 
-                              className={`p-1 text-slate-600 group-hover:text-slate-400 rounded transition-transform duration-200 ${
-                                isExpanded ? 'rotate-180 text-brand-400' : ''
+                              className={`p-1 text-[#817A72] group-hover:text-[#817A72] rounded transition-transform duration-200 ${
+                                isExpanded ? 'rotate-180 text-[#B85C38]' : ''
                               }`}
                               title={isExpanded ? 'Collapse' : 'Expand Details'}
                             >
@@ -1066,20 +1066,20 @@ export const GlobalTasksPage: React.FC = () => {
 
                         {/* Completed Task Expanded Detail Panel */}
                         {isExpanded && (
-                          <div className="px-5 pb-5 pt-2 border-t border-slate-800/60 bg-slate-950/40 space-y-3.5 animate-fadeIn">
-                            <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-4 relative shadow-inner">
+                          <div className="px-5 pb-5 pt-2 border-t border-[#E8E1D8] bg-[#F7F4EE] space-y-3.5 animate-fadeIn">
+                            <div className="bg-[#FFFDF9] border border-[#E8E1D8] rounded-lg p-4 relative shadow-inner">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-[#64866A] uppercase tracking-wider flex items-center gap-1.5">
                                   <span>Task Completed</span>
                                 </span>
                                 <button
                                   onClick={(e) => handleCopyDescription(e, content.details, task.id)}
-                                  className="flex items-center gap-1 text-[10px] text-slate-450 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 px-2 py-1 rounded transition border border-slate-750"
+                                  className="flex items-center gap-1 text-[10px] text-[#817A72] hover:text-[#292522] bg-[#F7F4EE] hover:bg-[#FFFDF9] px-2 py-1 rounded transition border border-[#E8E1D8]"
                                 >
                                   {copiedTaskId === task.id ? (
                                     <>
-                                      <Check className="w-3 h-3 text-emerald-400" />
-                                      <span className="text-emerald-400 font-semibold">Copied!</span>
+                                      <Check className="w-3 h-3 text-[#64866A]" />
+                                      <span className="text-[#64866A] font-semibold">Copied!</span>
                                     </>
                                   ) : (
                                     <>
@@ -1089,7 +1089,7 @@ export const GlobalTasksPage: React.FC = () => {
                                   )}
                                 </button>
                               </div>
-                              <p className="text-sm text-slate-300 font-normal leading-relaxed whitespace-pre-wrap select-text">
+                              <p className="text-sm text-[#292522] font-normal leading-relaxed whitespace-pre-wrap select-text">
                                 {content.details}
                               </p>
                             </div>
@@ -1098,14 +1098,14 @@ export const GlobalTasksPage: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleToggleComplete(task)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-850 rounded-lg text-xs font-semibold transition"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF9] border border-[#E8E1D8] text-[#292522] hover:bg-[#F7F4EE] rounded-lg text-xs font-semibold transition"
                                 >
                                   <Circle className="w-3.5 h-3.5" />
                                   <span>Re-open Task</span>
                                 </button>
                                 <button
                                   onClick={() => handleCreateFollowUp(task)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/25 text-brand-300 rounded-lg text-xs font-semibold transition"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F0D8CA]/60 hover:bg-[#F0D8CA] border border-[#B85C38]/30 text-[#B85C38] rounded-lg text-xs font-semibold transition"
                                 >
                                   <ArrowRightCircle className="w-3.5 h-3.5" />
                                   <span>Create Follow-up</span>
@@ -1114,7 +1114,7 @@ export const GlobalTasksPage: React.FC = () => {
 
                               <button
                                 onClick={() => handleDeleteClick(task)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-red-950/20 border border-red-900/30 hover:bg-red-950/40 text-red-400 rounded-lg text-xs font-medium transition"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-[#B94A48]/10 border border-[#B94A48]/20 hover:bg-[#B94A48]/20 text-[#B94A48] rounded-lg text-xs font-medium transition"
                               >
                                 <Trash2 className="w-3 h-3" />
                                 <span>Delete</span>

@@ -7,3 +7,7 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+echocrm-extension/config.local.js
+release/
+dist-electron/
+*.exe

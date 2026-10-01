@@ -5,19 +5,86 @@
  * then performs idempotent database upserts and WebM audio uploads.
  */
 
-const SUPABASE_CONFIG = {
-  url: 'https://qrstkwlakctszamkvsgh.supabase.co',
-  anonKey: 'sb_publishable_zqppgbF5RgedwkOOxXaJKg_9abQjvdP',
-  bucket: 'meeting-recordings'
-};
-
+const DEFAULT_BUCKET = 'meeting-recordings';
 const SESSION_STORAGE_KEY = 'echocrmSession';
 
 class SupabaseExtensionClient {
-  constructor(config = SUPABASE_CONFIG) {
-    this.url = config.url.replace(/\/$/, '');
-    this.anonKey = config.anonKey;
-    this.bucket = config.bucket;
+  constructor(config = null) {
+    this._config = config;
+    this.url = config && config.url ? config.url.replace(/\/$/, '') : '';
+    this.anonKey = config && config.anonKey ? config.anonKey : '';
+    this.bucket = config && config.bucket ? config.bucket : DEFAULT_BUCKET;
+  }
+
+  /**
+   * Lazily and dynamically resolves Supabase configuration from:
+   * 1. Explicit constructor arguments
+   * 2. globalThis.__ECHOCRM_CONFIG__ (from config.local.js or build-time injection)
+   * 3. chrome.storage.local ('echocrm_supabase_url', 'echocrm_supabase_anon_key')
+   * 4. globalThis.getEchoCRMConfig() resolver
+   */
+  async ensureConfig() {
+    if (this.url && this.anonKey && !this.url.includes('your-project')) {
+      return { url: this.url, anonKey: this.anonKey, bucket: this.bucket };
+    }
+
+    // 1. Check global configuration object
+    if (
+      typeof globalThis.__ECHOCRM_CONFIG__ === 'object' &&
+      globalThis.__ECHOCRM_CONFIG__ !== null &&
+      globalThis.__ECHOCRM_CONFIG__.url &&
+      globalThis.__ECHOCRM_CONFIG__.anonKey &&
+      !globalThis.__ECHOCRM_CONFIG__.url.includes('your-project')
+    ) {
+      this.url = globalThis.__ECHOCRM_CONFIG__.url.replace(/\/$/, '');
+      this.anonKey = globalThis.__ECHOCRM_CONFIG__.anonKey;
+      this.bucket = globalThis.__ECHOCRM_CONFIG__.bucket || DEFAULT_BUCKET;
+      return { url: this.url, anonKey: this.anonKey, bucket: this.bucket };
+    }
+
+    // 2. Check chrome.storage.local
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const stored = await chrome.storage.local.get([
+          'echocrm_supabase_url',
+          'echocrm_supabase_anon_key',
+          'echocrm_supabase_bucket'
+        ]);
+        if (stored.echocrm_supabase_url && stored.echocrm_supabase_anon_key) {
+          this.url = stored.echocrm_supabase_url.replace(/\/$/, '');
+          this.anonKey = stored.echocrm_supabase_anon_key;
+          this.bucket = stored.echocrm_supabase_bucket || DEFAULT_BUCKET;
+          return { url: this.url, anonKey: this.anonKey, bucket: this.bucket };
+        }
+      }
+    } catch (e) {
+      /* chrome.storage unavailable in this context */
+    }
+
+    // 3. Check getEchoCRMConfig if defined in config.js
+    if (typeof globalThis.getEchoCRMConfig === 'function') {
+      try {
+        const cfg = await globalThis.getEchoCRMConfig();
+        if (cfg && cfg.url && cfg.anonKey && cfg.isConfigured) {
+          this.url = cfg.url.replace(/\/$/, '');
+          this.anonKey = cfg.anonKey;
+          this.bucket = cfg.bucket || DEFAULT_BUCKET;
+          return { url: this.url, anonKey: this.anonKey, bucket: this.bucket };
+        }
+      } catch (e) {
+        /* error fetching config */
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Returns true if Supabase configuration is present and valid.
+   */
+  async isConfigured() {
+    const cfg = await this.ensureConfig();
+    return Boolean(cfg && cfg.url && cfg.anonKey);
   }
 
   // ---------------------------------------------------------------------------
@@ -88,6 +155,11 @@ class SupabaseExtensionClient {
   // Authentication
   // ---------------------------------------------------------------------------
   async signIn(email, password) {
+    await this.ensureConfig();
+    if (!this.url || !this.anonKey) {
+      throw new Error('Supabase client is not configured. Run "npm run config:extension" or set your credentials.');
+    }
+
     const res = await fetch(`${this.url}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: {
@@ -109,8 +181,9 @@ class SupabaseExtensionClient {
   }
 
   async signOut() {
+    await this.ensureConfig();
     const session = await this.getStoredSession();
-    if (session && session.access_token) {
+    if (session && session.access_token && this.url && this.anonKey) {
       fetch(`${this.url}/auth/v1/logout`, {
         method: 'POST',
         headers: {
@@ -127,6 +200,9 @@ class SupabaseExtensionClient {
   }
 
   async refreshSession() {
+    await this.ensureConfig();
+    if (!this.url || !this.anonKey) return null;
+
     const session = await this.getStoredSession();
     if (!session || !session.refresh_token) return null;
 
@@ -170,6 +246,10 @@ class SupabaseExtensionClient {
   }
 
   async getAuthHeaders(extraHeaders = {}) {
+    await this.ensureConfig();
+    if (!this.url || !this.anonKey) {
+      throw new Error('Supabase client is not configured. Please run "npm run config:extension" or set credentials.');
+    }
     const session = await this.getValidSession();
     const token = session && session.access_token ? session.access_token : this.anonKey;
     return {

@@ -17,83 +17,93 @@ EchoCRM is made of **three runtime components** that work together:
 
 ---
 
-## Prerequisites
+## Requirements
 
-- **Node.js 18+** and npm
-- **Python 3.10+**
-- **Ollama** — https://ollama.com
-- **Google Chrome** (for the extension)
-- A Supabase project (this repo ships with a linked project; see [Supabase](#5-supabase-backend) below)
+- **Windows** (Windows 10 / 11 64-bit)
+- **Node.js** 18+ and npm (if building from source)
+- **Python 3.10+** (for local AI service)
+- **Ollama** — [ollama.com](https://ollama.com)
+- **llama3.2:3b** model
+- Required environment configuration (`.env` based on `.env.example`)
+- **Google Chrome** (optional, for meeting recording extension)
 
 ---
 
-## 1. Install dependencies
+## Development
 
 ```powershell
-git clone <your-repo-url>
-cd EchoCRM
+# Install project dependencies
+npm.cmd install
 
-# Desktop app
-npm install
-
-# AI service
+# Install AI service Python dependencies
 pip install -r requirements.txt
+
+# Start Vite dev server + launch Electron + start local AI service
+npm.cmd run dev
 ```
 
-## 2. Environment variables
+---
 
-Copy the example file and fill in your Supabase credentials:
+## Production Build
+
+To compile TypeScript and bundle the React frontend into `dist/`:
 
 ```powershell
-Copy-Item .env.example .env
+npm.cmd run build
 ```
 
-```dotenv
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-publishable-key
-```
+---
 
-`.env` is git-ignored. The Chrome extension uses its own copy of these values in
-`echocrm-extension/supabase/client.js` (`SUPABASE_CONFIG`).
+## Windows Packaging
 
-## 3. Local AI service + Ollama
-
-1. Install Ollama and pull the model:
-   ```powershell
-   ollama pull llama3.2:3b
-   ```
-   Ollama usually runs as a background service; if not, start it with `ollama serve`.
-2. The desktop app launches the Python service automatically on startup
-   (`main.js` → `python ai/server.py`). To run it manually:
-   ```powershell
-   python ai/server.py        # serves http://127.0.0.1:8000
-   ```
-3. Sanity check:
-   ```powershell
-   python test_pipeline.py             # full transcription + analysis on the sample audio
-   python test/benchmark_pipeline.py   # optional: timing benchmarks
-   ```
-
-`faster-whisper` downloads the Whisper model (`base` by default) on first use and
-caches it locally. Model size / device are configurable via environment variables
-(`WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`) read in
-`ai/config/settings.py`.
-
-## 4. Run the desktop app
+To generate the production Windows installer and standalone executable:
 
 ```powershell
-npm run dev
+npm.cmd run electron:build
 ```
 
-This starts Vite (`http://localhost:5173`) and launches Electron once it is ready.
-Electron also starts the Python AI service as a child process.
+Packaged distribution outputs in `release/`:
+- **Windows Installer**: `release/EchoCRM Setup 1.0.0.exe` (NSIS installer with custom directory selection)
+- **Unpacked Standalone**: `release/win-unpacked/` (Contains `EchoCRM.exe` and unpacked AI backend)
 
-Production build:
+---
 
-```powershell
-npm run build
-npm run electron:build
-```
+## AI Setup
+
+EchoCRM uses a 100% offline, local AI processing pipeline:
+1. **Ollama Service**:
+   - Install Ollama from [ollama.com](https://ollama.com)
+   - Pull the required model:
+     ```powershell
+     ollama pull llama3.2:3b
+     ```
+   - Ensure Ollama is running locally on `http://127.0.0.1:11434` (`ollama serve`).
+2. **Speech-to-Text (Whisper)**:
+   - Powered by `faster-whisper` (`base` model by default).
+   - Weights are cached locally on first run; no cloud audio transmission.
+3. **AI Service Lifecycle**:
+   - In both development and packaged production builds, Electron automatically spawns and manages `ai/server.py` on `http://127.0.0.1:8000`.
+   - On application shutdown, Electron cleanly terminates the Python AI process.
+
+---
+
+## Environment Configuration
+
+EchoCRM requires connection to a Supabase backend for CRM data persistence.
+
+1. Copy the example configuration template:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+2. Populate `.env` with your project's publishable credentials:
+   ```dotenv
+   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-publishable-key
+   ```
+3. **Security Notes**:
+   - `.env` is ignored by Git and will NOT be packaged into client distributions.
+   - Never place secret keys (e.g. Supabase `service_role` key) into client configurations.
+   - For the Chrome extension, configure credentials securely via the extension options/settings.
 
 ## 5. Supabase backend
 

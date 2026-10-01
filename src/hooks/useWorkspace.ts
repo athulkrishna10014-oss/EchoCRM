@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Call, Task, Deal, DealStage, CallSummary, TaskStatus } from '../types'
+import { Call, Task, CallSummary, TaskStatus } from '../types'
 import { 
   getCustomerCalls, 
   getCustomerTasks, 
-  getCustomerDeals, 
   getCustomerCallSummaries,
   createTask, 
   updateTask, 
   deleteTask, 
-  updateDealStage,
   updateCallSummary,
   getCustomerRecordings
 } from '../services/workspaceService'
@@ -22,7 +20,7 @@ const taskSortFn = (a: Task, b: Task) => {
   return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
 };
 
-export type WorkspaceTab = 'overview' | 'calls' | 'transcript' | 'tasks' | 'deals';
+export type WorkspaceTab = 'overview' | 'calls' | 'transcript' | 'tasks';
 
 export function useWorkspace(customerId: string) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview')
@@ -31,7 +29,6 @@ export function useWorkspace(customerId: string) {
   const [calls, setCalls] = useState<Call[]>([])
   const [recordings, setRecordings] = useState<any[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [deals, setDeals] = useState<Deal[]>([])
   const [summaries, setSummaries] = useState<(CallSummary & { call?: { started_at?: string; customer_id?: string } })[]>([])
   
   // Loading indicators
@@ -45,17 +42,15 @@ export function useWorkspace(customerId: string) {
     setLoading(true)
     setError(null)
     try {
-      const [fetchedCalls, fetchedTasks, fetchedDeals, fetchedRecordings, fetchedSummaries] = await Promise.all([
+      const [fetchedCalls, fetchedTasks, fetchedRecordings, fetchedSummaries] = await Promise.all([
         getCustomerCalls(customerId),
         getCustomerTasks(customerId),
-        getCustomerDeals(customerId),
         getCustomerRecordings(customerId),
         getCustomerCallSummaries(customerId)
       ]);
       setCalls(fetchedCalls)
       setRecordings(fetchedRecordings)
       setTasks(fetchedTasks)
-      setDeals(fetchedDeals)
       setSummaries(fetchedSummaries)
     } catch (err: any) {
       setError(err?.message || 'Unable to load workspace data.')
@@ -117,39 +112,14 @@ export function useWorkspace(customerId: string) {
         }
       }
 
-      // 3. Deals Table
-      else if (event.table === 'deals') {
-        const record = event.eventType === 'DELETE' ? event.oldRecord : event.newRecord;
-        if (record.customer_id !== customerId) return;
-
-        if (event.eventType === 'DELETE') {
-          setDeals((prev) => prev.filter((d) => d.id !== event.oldRecord.id));
-        } else if (event.eventType === 'UPDATE') {
-          setDeals((prev) => {
-            const exists = prev.some((d) => d.id === event.newRecord.id);
-            if (exists) {
-              return prev.map((d) => (d.id === event.newRecord.id ? event.newRecord : d))
-                         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            }
-            return prev;
-          });
-        } else if (event.eventType === 'INSERT') {
-          setDeals((prev) => {
-            const exists = prev.some((d) => d.id === event.newRecord.id);
-            if (exists) return prev;
-            return [event.newRecord, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          });
-        }
-      }
-
-      // 4. Call Summaries Table (refresh scoped list; payload has no customer_id)
+      // 3. Call Summaries Table (refresh scoped list; payload has no customer_id)
       else if (event.table === 'call_summaries') {
         getCustomerCallSummaries(customerId)
           .then((fresh) => setSummaries(fresh))
           .catch(() => {});
       }
 
-      // 5. Meeting Recordings Table
+      // 4. Meeting Recordings Table
       else if (event.table === 'meeting_recordings') {
         const record = event.eventType === 'DELETE' ? event.oldRecord : event.newRecord;
         if (record.customer_id !== customerId) return;
@@ -252,25 +222,8 @@ export function useWorkspace(customerId: string) {
     }
   }
 
-  // Deals Stage operations
-  const changeDealStage = async (dealId: string, stage: DealStage) => {
-    const originalDeals = [...deals];
-    try {
-      setError(null)
-      
-      // Optimistically update stage tag
-      setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage } : d)));
-      
-      await updateDealStage(dealId, stage);
-    } catch (err: any) {
-      // Revert on failure
-      setDeals(originalDeals)
-      setError(err?.message || 'Unable to update deal stage.');
-    }
-  }
-
   // Correct an AI-generated call summary
-  const editSummary = async (summaryId: string, updates: { summary_text?: string; deal_stage?: DealStage }) => {
+  const editSummary = async (summaryId: string, updates: { summary_text?: string }) => {
     try {
       setError(null)
       const updated = await updateCallSummary(summaryId, updates)
@@ -287,7 +240,6 @@ export function useWorkspace(customerId: string) {
     calls,
     recordings,
     tasks,
-    deals,
     summaries,
     loading,
     error,
@@ -295,7 +247,6 @@ export function useWorkspace(customerId: string) {
     editTask,
     toggleTaskComplete,
     removeTask,
-    changeDealStage,
     editSummary,
     refresh: loadAllData
   }

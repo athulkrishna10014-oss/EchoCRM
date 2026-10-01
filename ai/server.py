@@ -3,6 +3,7 @@ import sys
 import time
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
@@ -14,6 +15,20 @@ from ai.pipeline.orchestrator import process_call, CallPipeline
 from ai.analysis.llm_provider import get_llm_provider, LocalLlamaProvider
 
 app = FastAPI(title="EchoCRM AI Service", version="1.0.0")
+
+# Security: Restrict CORS strictly to local development origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 model_warmed_up: bool = False
 
@@ -72,17 +87,15 @@ def handle_process_call(request: ProcessCallRequest) -> Dict[str, Any]:
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail=f"Audio file not found at path: {audio_path}")
 
-    # Purge all cached ai modules so changes to prompts, validator, and orchestrator are immediately active
-    for mod_name in list(sys.modules.keys()):
-        if mod_name.startswith("ai.") or mod_name == "ai":
-            del sys.modules[mod_name]
-
-    import ai.analysis.prompts as prompts
-    import ai.analysis.validator as validator
-    import ai.pipeline.orchestrator as orchestrator
+    ext = os.path.splitext(audio_path)[1].lower()
+    if ext not in settings.SUPPORTED_AUDIO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported audio format '{ext}'. Supported formats: {', '.join(settings.SUPPORTED_AUDIO_EXTENSIONS)}"
+        )
 
     try:
-        result = orchestrator.process_call(audio_path, customer_id=request.customer_id)
+        result = process_call(audio_path, customer_id=request.customer_id)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Processing exception: {str(e)}")

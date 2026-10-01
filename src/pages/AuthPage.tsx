@@ -89,22 +89,22 @@ export const AuthPage: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-slate-950 relative overflow-hidden select-none">
-      {/* Background decoration */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-brand-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none" />
+    <div className="h-screen w-screen flex items-center justify-center bg-[#F7F4EE] relative overflow-hidden select-none">
+      {/* Subtle warm ambient lighting */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#F0D8CA]/40 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#C59A5F]/15 blur-[140px] pointer-events-none" />
 
       {/* Main Container */}
-      <div className="w-full max-w-md p-8 rounded-2xl glass-panel relative z-10 shadow-2xl transition-all duration-300">
+      <div className="w-full max-w-md mx-4 p-6 sm:p-8 rounded-2xl bg-[#FFFDF9] border border-[#E8E1D8] relative z-10 shadow-sm transition-all duration-300">
         
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 bg-brand-500/10 text-brand-400 rounded-2xl mb-4 border border-brand-500/20">
-            <KeyRound className="w-8 h-8" />
+          <div className="inline-flex items-center justify-center p-3.5 bg-[#F0D8CA]/60 text-[#B85C38] rounded-2xl mb-4 border border-[#B85C38]/20">
+            <KeyRound className="w-7 h-7" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Echo CRM</h1>
-          <p className="text-sm text-slate-400">
-            {isSignUp ? 'Create an account to get started' : 'Sign in to access your dashboard'}
+          <h1 className="text-2xl font-bold tracking-tight text-[#292522] font-display mb-1.5">Echo CRM</h1>
+          <p className="text-xs text-[#817A72]">
+            {isSignUp ? 'Create an account to get started with Echo CRM' : 'Sign in to access your sales workspace'}
           </p>
         </div>
 
@@ -113,15 +113,15 @@ export const AuthPage: React.FC = () => {
           
           {/* Notifications */}
           {errorMessage && (
-            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-xs animate-fadeIn">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#B94A48]/10 border border-[#B94A48]/25 text-[#B94A48] text-xs animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-[#B94A48] shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {infoMessage && (
-            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs animate-fadeIn">
-              <AlertCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#64866A]/10 border border-[#64866A]/25 text-[#64866A] text-xs animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-[#64866A] shrink-0 mt-0.5" />
               <span>{infoMessage}</span>
             </div>
           )}
@@ -129,10 +129,10 @@ export const AuthPage: React.FC = () => {
           {/* Name Field (Sign Up Only) */}
           {isSignUp && (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Full Name</label>
+              <label className="text-xs font-semibold text-[#817A72] tracking-wide uppercase">Full Name</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                  <User className="w-4.5 h-4.5" />
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#817A72]">
+                  <User className="w-4 h-4" />
                 </span>
                 <input
                   type="text"
@@ -140,7 +140,7 @@ export const AuthPage: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
-                  className="w-full pl-10 pr-4 py-2.5 glass-input"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#F7F4EE] border border-[#E8E1D8] focus:border-[#B85C38] focus:outline-none rounded-xl text-xs text-[#292522] placeholder-[#817A72] transition"
                 />
               </div>
             </div>
@@ -148,10 +148,10 @@ export const AuthPage: React.FC = () => {
 
           {/* Email Field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Email Address</label>
+            <label className="text-xs font-semibold text-[#817A72] tracking-wide uppercase">Email Address</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                <Mail className="w-4.5 h-4.5" />
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#817A72]">
+                <Mail className="w-4 h-4" />
               </span>
               <input
                 type="email"
@@ -159,17 +159,17 @@ export const AuthPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-2.5 glass-input"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F7F4EE] border border-[#E8E1D8] focus:border-[#B85C38] focus:outline-none rounded-xl text-xs text-[#292522] placeholder-[#817A72] transition"
               />
             </div>
           </div>
 
           {/* Password Field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Password</label>
+            <label className="text-xs font-semibold text-[#817A72] tracking-wide uppercase">Password</label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
-                <Lock className="w-4.5 h-4.5" />
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#817A72]">
+                <Lock className="w-4 h-4" />
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -177,15 +177,16 @@ export const AuthPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                className="w-full pl-10 pr-10 py-2.5 glass-input"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#F7F4EE] border border-[#E8E1D8] focus:border-[#B85C38] focus:outline-none rounded-xl text-xs text-[#292522] placeholder-[#817A72] transition"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 tabIndex={-1}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-300"
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#817A72] hover:text-[#B85C38] transition"
               >
-                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
@@ -194,10 +195,10 @@ export const AuthPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 mt-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium shadow-lg hover:shadow-brand-500/20 hover:scale-[1.01] active:scale-[0.99] active:bg-brand-700 transition-all duration-150 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+            className="w-full py-2.5 mt-2 bg-[#B85C38] hover:bg-[#A04F30] active:bg-[#8D4428] text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-sm transition-all duration-150 flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
           >
             {loading ? (
-              <span className="border-2 border-white border-t-transparent w-5 h-5 rounded-full animate-spin" />
+              <span className="border-2 border-white border-t-transparent w-4 h-4 rounded-full animate-spin" />
             ) : (
               isSignUp ? 'Create Account' : 'Sign In'
             )}
@@ -205,7 +206,7 @@ export const AuthPage: React.FC = () => {
         </form>
 
         {/* Toggle Mode */}
-        <div className="mt-6 text-center text-sm text-slate-400">
+        <div className="mt-6 text-center text-xs text-[#817A72]">
           <span>{isSignUp ? 'Already have an account? ' : "Don't have an account? "}</span>
           <button
             type="button"
@@ -215,7 +216,7 @@ export const AuthPage: React.FC = () => {
               setInfoMessage(null)
             }}
             disabled={loading}
-            className="text-brand-400 hover:text-brand-300 font-semibold focus:outline-none hover:underline"
+            className="text-[#B85C38] hover:text-[#A04F30] font-semibold focus:outline-none hover:underline"
           >
             {isSignUp ? 'Sign In' : 'Sign Up'}
           </button>

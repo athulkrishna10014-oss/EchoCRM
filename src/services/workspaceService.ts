@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client'
-import { Call, Task, Deal, DealStage, CallSummary } from '../types'
+import { Call, Task, CallSummary } from '../types'
 
 /**
  * Handle database errors safely by translating them into user-friendly messages.
@@ -94,52 +94,7 @@ export async function getCustomerTasks(customerId: string): Promise<Task[]> {
   }
 }
 
-/**
- * Retrieve deals associated with a specific customer.
- */
-export async function getCustomerDeals(customerId: string): Promise<Deal[]> {
-  try {
-    const { data, error } = await supabase
-      .from('deals')
-      .select('*')
-      .eq('customer_id', customerId)
-      .order('created_at', { ascending: false });
 
-    if (error) {
-      throw handleWorkspaceError(error, 'Unable to load customer deals.');
-    }
-
-    return data || [];
-  } catch (err: any) {
-    throw err instanceof Error ? err : new Error('An unexpected error occurred while loading deals.');
-  }
-}
-
-/**
- * Retrieve all deals across all customers for the authenticated user.
- */
-export async function getAllDeals(): Promise<Deal[]> {
-  try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('You must be signed in to view deals.');
-    }
-
-    const { data, error } = await supabase
-      .from('deals')
-      .select('*, customer:customers(name)')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw handleWorkspaceError(error, 'Unable to load deals.');
-    }
-
-    return data || [];
-  } catch (err: any) {
-    throw err instanceof Error ? err : new Error('An unexpected error occurred while loading deals.');
-  }
-}
 
 /**
  * Retrieve call summaries for all calls belonging to a customer.
@@ -182,12 +137,11 @@ export async function getCustomerCallSummaries(
  */
 export async function updateCallSummary(
   id: string,
-  updates: { summary_text?: string; deal_stage?: DealStage }
+  updates: { summary_text?: string }
 ): Promise<CallSummary> {
   try {
     const updateData: any = {};
     if (updates.summary_text !== undefined) updateData.summary_text = updates.summary_text.trim();
-    if (updates.deal_stage !== undefined) updateData.deal_stage = updates.deal_stage;
 
     const { data, error } = await supabase
       .from('call_summaries')
@@ -286,28 +240,6 @@ export async function deleteTask(id: string): Promise<void> {
     }
   } catch (err: any) {
     throw err instanceof Error ? err : new Error('An unexpected error occurred while deleting task.');
-  }
-}
-
-/**
- * Update a deal's stage.
- */
-export async function updateDealStage(id: string, stage: DealStage): Promise<Deal> {
-  try {
-    const { data, error } = await supabase
-      .from('deals')
-      .update({ stage })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw handleWorkspaceError(error, 'Deal stage could not be updated.');
-    }
-
-    return data;
-  } catch (err: any) {
-    throw err instanceof Error ? err : new Error('An unexpected error occurred while updating deal.');
   }
 }
 

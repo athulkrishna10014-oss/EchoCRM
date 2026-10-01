@@ -1,6 +1,9 @@
 {
   "name": "echo-crm",
+  "productName": "EchoCRM",
   "version": "1.0.0",
+  "description": "EchoCRM — Offline-First Real Estate Sales Desktop Application",
+  "author": "EchoCRM",
   "main": "main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
@@ -8,7 +11,51 @@
     "dev:electron": "npx wait-on http://localhost:5173 && npx cross-env NODE_ENV=development electron .",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "config:extension": "node scripts/sync-extension-config.mjs"
+  },
+  "build": {
+    "appId": "com.echocrm.desktop",
+    "productName": "EchoCRM",
+    "copyright": "Copyright © 2026 EchoCRM",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json",
+      "ai/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "ai/**/*"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EchoCRM"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

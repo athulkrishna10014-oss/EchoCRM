@@ -11,6 +11,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    port: 5173,
+    strictPort: true,
+    watch: {
+      ignored: ['**/test/**', '**/dist/**', '**/.git/**', '**/ai/**/__pycache__/**', '**/temp/**']
+    }
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

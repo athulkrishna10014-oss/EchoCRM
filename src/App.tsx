@@ -7,7 +7,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { GlobalTasksPage } from './pages/GlobalTasksPage'
 import { RecordingsPage } from './pages/RecordingsPage'
-import { DealsPipelinePage } from './pages/DealsPipelinePage'
 import { TranscriptSearchPage } from './pages/TranscriptSearchPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -17,12 +16,12 @@ const AppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 gap-4">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F7F4EE] gap-4">
         <div className="relative w-12 h-12">
-          <div className="absolute inset-0 border-4 border-brand-500/10 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 border-4 border-[#B85C38]/15 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-[#B85C38] border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-xs font-semibold tracking-wider text-brand-400 uppercase animate-pulse">
+        <p className="text-xs font-semibold tracking-wider text-[#B85C38] uppercase animate-pulse font-display">
           Loading Echo CRM...
         </p>
       </div>
@@ -45,8 +44,6 @@ const AppContent: React.FC = () => {
         )
       case 'customers':
         return <CustomersPage />
-      case 'deals':
-        return <DealsPipelinePage />
       case 'tasks':
         return <GlobalTasksPage />
       case 'search':

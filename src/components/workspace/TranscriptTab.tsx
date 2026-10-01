@@ -76,53 +76,53 @@ const CallTranscriptCard: React.FC<CallTranscriptCardProps> = ({ call, isLatest 
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+      className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
         isLatest
-          ? 'border-brand-500/40 bg-brand-500/5'
-          : 'border-slate-800/80 bg-slate-950/50'
+          ? 'border-[#B85C38]/40 bg-[#FFFDF9] shadow-xs'
+          : 'border-[#E8E1D8] bg-[#FFFDF9]'
       }`}
     >
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/30 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-[#F7F4EE]/60 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`p-2 rounded-lg border shrink-0 ${
+            className={`p-2.5 rounded-xl border shrink-0 ${
               isLatest
-                ? 'bg-brand-500/10 border-brand-500/20 text-brand-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400'
+                ? 'bg-[#F0D8CA]/60 border-[#B85C38]/20 text-[#B85C38]'
+                : 'bg-[#F7F4EE] border-[#E8E1D8] text-[#817A72]'
             }`}
           >
             <Mic className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <span className="text-xs font-semibold text-[#292522] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#817A72] shrink-0" />
                 {formatDate(call.started_at)}
               </span>
               {isLatest && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-brand-500/15 text-brand-400 border border-brand-500/25 rounded-full uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 bg-[#F0D8CA] text-[#B85C38] border border-[#B85C38]/20 rounded-md uppercase tracking-wider">
                   <Zap className="w-2.5 h-2.5" />
                   Latest
                 </span>
               )}
             </div>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[11px] text-[#817A72] font-mono">
                 ID: {call.id.slice(0, 8)}...
               </span>
               {call.duration_seconds !== undefined && (
-                <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                <span className="text-[11px] text-[#817A72] flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[#817A72]" />
                   {formatDuration(call.duration_seconds)}
                 </span>
               )}
               {hasTranscript ? (
-                <span className="text-[10px] text-slate-500 font-mono">{wordCount} words</span>
+                <span className="text-[11px] text-[#817A72] font-mono">{wordCount} words</span>
               ) : (
-                <span className="text-[10px] text-rose-400 font-semibold">No transcript</span>
+                <span className="text-[11px] text-[#B94A48] font-semibold">No transcript</span>
               )}
             </div>
           </div>
@@ -135,13 +135,13 @@ const CallTranscriptCard: React.FC<CallTranscriptCardProps> = ({ call, isLatest 
                 e.stopPropagation()
                 handleCopy()
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF9] hover:bg-[#F7F4EE] border border-[#E8E1D8] text-[#817A72] hover:text-[#292522] rounded-xl text-xs font-semibold transition shadow-xs"
               title="Copy transcript"
             >
               {copied ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Copied!</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#64866A]" />
+                  <span className="text-[#64866A]">Copied!</span>
                 </>
               ) : (
                 <>
@@ -152,40 +152,40 @@ const CallTranscriptCard: React.FC<CallTranscriptCardProps> = ({ call, isLatest 
             </button>
           )}
           {expanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-500" />
+            <ChevronUp className="w-4 h-4 text-[#817A72]" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500" />
+            <ChevronDown className="w-4 h-4 text-[#817A72]" />
           )}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-slate-800/60 pt-3">
+        <div className="px-5 pb-5 space-y-3 border-t border-[#E8E1D8] pt-4">
           {hasTranscript ? (
             <>
               <div className="space-y-2">
-                <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-brand-400" />
+                <h5 className="text-xs font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-[#B85C38]" />
                   Speech-to-Text Transcript
                 </h5>
-                <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-xl text-xs text-slate-200 leading-[1.85] max-h-72 overflow-y-auto whitespace-pre-wrap font-mono selection:bg-brand-500/30">
+                <div className="p-4 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#292522] leading-[1.85] max-h-72 overflow-y-auto whitespace-pre-wrap font-mono selection:bg-[#F0D8CA]">
                   {rawText}
                 </div>
               </div>
               {cleanText && (
                 <div className="space-y-2">
-                  <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                  <h5 className="text-xs font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#B85C38]" />
                     Cleaned / Formatted Transcript
                   </h5>
-                  <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-xl text-xs text-slate-200 leading-[1.85] max-h-60 overflow-y-auto whitespace-pre-wrap selection:bg-brand-500/30">
+                  <div className="p-4 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#292522] leading-[1.85] max-h-60 overflow-y-auto whitespace-pre-wrap selection:bg-[#F0D8CA]">
                     {cleanText}
                   </div>
                 </div>
               )}
             </>
           ) : (
-            <div className="p-3.5 bg-slate-900/50 border border-slate-800 rounded-xl text-xs text-slate-500 italic">
+            <div className="p-3.5 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#817A72] italic">
               No transcript was saved for this call. The call may still be processing or the AI
               pipeline may have encountered an error.
             </div>
@@ -216,14 +216,14 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
 
   if (lastResult.status !== 'SUCCESS') {
     return (
-      <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs">
+      <div className="flex items-start gap-3 p-4 bg-[#B94A48]/10 border border-[#B94A48]/20 rounded-2xl text-[#B94A48] text-xs">
         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
           <div className="font-bold mb-0.5">Last pipeline run did not succeed</div>
           <div className="opacity-90">
             Status: <span className="font-mono">{lastResult.status}</span>
             {lastResult.metadata?.errors?.length > 0 && (
-              <> – {lastResult.metadata.errors.join(', ')}</>
+              <> - {lastResult.metadata.errors.join(', ')}</>
             )}
           </div>
         </div>
@@ -232,9 +232,9 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
   }
 
   return (
-    <div className="p-5 bg-brand-500/5 border border-brand-500/20 rounded-xl space-y-4 animate-fadeIn">
+    <div className="p-6 bg-[#FFFDF9] border border-[#B85C38]/30 rounded-2xl space-y-4 shadow-xs animate-fadeIn">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h4 className="text-xs font-bold text-brand-300 uppercase tracking-wider flex items-center gap-2">
+        <h4 className="text-xs font-bold text-[#B85C38] uppercase tracking-wider flex items-center gap-2 font-display">
           <Zap className="w-4 h-4" />
           Live Pipeline Result
         </h4>
@@ -245,12 +245,12 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
             { Icon: Sparkles, label: 'Whisper', value: lastResult.metadata?.transcription_model || 'n/a' },
             { Icon: Bot, label: 'LLM', value: lastResult.metadata?.llm_model || 'n/a' },
           ].map(({ Icon, label, value }) => (
-            <div key={label} className="p-2 bg-slate-950/60 border border-slate-800 rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1 text-slate-400 text-[10px] font-semibold mb-0.5">
-                <Icon className="w-3 h-3 text-brand-400" />
+            <div key={label} className="p-2.5 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-center">
+              <div className="flex items-center justify-center gap-1 text-[#817A72] text-[10px] font-semibold mb-0.5">
+                <Icon className="w-3 h-3 text-[#B85C38]" />
                 <span>{label}</span>
               </div>
-              <div className="text-xs font-bold text-white font-mono truncate">{value}</div>
+              <div className="text-xs font-bold text-[#292522] font-mono truncate">{value}</div>
             </div>
           ))}
         </div>
@@ -258,23 +258,23 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-brand-400" />
+          <h5 className="text-xs font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-[#B85C38]" />
             Speech-to-Text Transcript
           </h5>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono text-slate-500 px-1.5 py-0.5 bg-slate-800 rounded">
+            <span className="text-[10px] font-mono text-[#817A72] px-2 py-0.5 bg-[#F7F4EE] border border-[#E8E1D8] rounded-md">
               {wordCount} words
             </span>
             <button
               onClick={handleCopy}
               disabled={!lastResult.transcript}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold transition disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1 bg-[#FFFDF9] hover:bg-[#F7F4EE] border border-[#E8E1D8] text-[#817A72] hover:text-[#292522] rounded-xl text-xs font-semibold transition disabled:opacity-40 shadow-xs"
             >
               {copied ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Copied!</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#64866A]" />
+                  <span className="text-[#64866A]">Copied!</span>
                 </>
               ) : (
                 <>
@@ -286,11 +286,11 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
           </div>
         </div>
         {lastResult.transcript ? (
-          <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-xl text-xs text-slate-200 leading-[1.85] max-h-64 overflow-y-auto whitespace-pre-wrap font-mono selection:bg-brand-500/30">
+          <div className="p-4 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#292522] leading-[1.85] max-h-64 overflow-y-auto whitespace-pre-wrap font-mono selection:bg-[#F0D8CA]">
             {lastResult.transcript}
           </div>
         ) : (
-          <div className="p-3.5 bg-slate-900/50 border border-slate-800 rounded-xl text-xs text-slate-500 italic">
+          <div className="p-3.5 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#817A72] italic">
             No transcript text was returned by the AI pipeline.
           </div>
         )}
@@ -298,11 +298,11 @@ const LiveResultBanner: React.FC<LiveResultBannerProps> = ({ lastResult }) => {
 
       {lastResult.clean_transcript && (
         <div className="space-y-2">
-          <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+          <h5 className="text-xs font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#B85C38]" />
             Cleaned / Formatted Transcript
           </h5>
-          <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-xl text-xs text-slate-200 leading-[1.85] max-h-60 overflow-y-auto whitespace-pre-wrap selection:bg-brand-500/30">
+          <div className="p-4 bg-[#F7F4EE] border border-[#E8E1D8] rounded-xl text-xs text-[#292522] leading-[1.85] max-h-60 overflow-y-auto whitespace-pre-wrap selection:bg-[#F0D8CA]">
             {typeof lastResult.clean_transcript === 'string'
               ? lastResult.clean_transcript
               : JSON.stringify(lastResult.clean_transcript, null, 2)}
@@ -326,11 +326,11 @@ export const TranscriptTab: React.FC<TranscriptTabProps> = ({ calls, lastResult 
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-            <FileText className="w-4 h-4 text-brand-400" />
+          <h4 className="text-xs font-bold text-[#817A72] uppercase tracking-wider flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#B85C38]" />
             Saved Call Transcripts
             {hasAnyCalls && (
-              <span className="text-[10px] font-mono bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-mono bg-[#FFFDF9] border border-[#E8E1D8] text-[#817A72] px-2.5 py-0.5 rounded-full shadow-xs">
                 {sortedCalls.length}
               </span>
             )}
@@ -338,13 +338,13 @@ export const TranscriptTab: React.FC<TranscriptTabProps> = ({ calls, lastResult 
         </div>
 
         {!hasAnyCalls ? (
-          <div className="flex flex-col items-center justify-center py-16 border border-dashed border-slate-800 rounded-xl bg-slate-900/10 select-none">
-            <div className="p-4 bg-slate-800/40 text-slate-500 border border-slate-750 rounded-2xl mb-4">
+          <div className="flex flex-col items-center justify-center py-16 border border-dashed border-[#E8E1D8] rounded-2xl bg-[#FFFDF9] select-none">
+            <div className="p-4 bg-[#F0D8CA]/60 text-[#B85C38] border border-[#B85C38]/20 rounded-2xl mb-4 shadow-xs">
               <Mic className="w-7 h-7" />
             </div>
-            <h4 className="text-sm font-bold text-slate-350">No transcripts yet</h4>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-xs text-center leading-relaxed">
-              Go to the <span className="text-brand-400 font-semibold">Calls</span> tab and process
+            <h4 className="text-sm font-bold text-[#292522] font-display">No transcripts yet</h4>
+            <p className="text-xs text-[#817A72] mt-1.5 max-w-xs text-center leading-relaxed">
+              Go to the <span className="text-[#B85C38] font-semibold">Calls</span> tab and process
               an audio file or recording to generate and save a transcript.
             </p>
           </div>

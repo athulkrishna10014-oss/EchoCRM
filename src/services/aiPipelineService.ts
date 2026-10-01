@@ -12,6 +12,129 @@ export interface ProcessCallOptions {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Stale lock recovery & Due date sanitization constants & helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Maximum time (in milliseconds) a recording can remain in an in-progress state
+ * ('processing', 'transcribing', 'customer_resolving', 'analyzing') before being
+ * considered orphaned/stale (e.g. due to application crash, power loss, or network drop).
+ * 
+ * Chosen timeout: 10 minutes (600,000 ms).
+ * This provides generous headroom for large audio files to transcribe even on slow CPUs,
+ * while ensuring stuck locks are safely recovered and made eligible for user retry.
+ */
+export const STALE_PROCESSING_TIMEOUT_MS = 10 * 60 * 1000;
+
+const IN_PROGRESS_STATUS_LIST = [
+  'processing',
+  'transcribing',
+  'analyzing',
+  'customer_resolving'
+];
+
+/**
+ * Checks whether a recording is in an in-progress state and has exceeded
+ * the stale processing timeout based on its updated_at (or created_at) timestamp.
+ */
+export function isRecordingStale(
+  recording: { status: string; updated_at?: string | null; created_at?: string | null },
+  timeoutMs: number = STALE_PROCESSING_TIMEOUT_MS
+): boolean {
+  if (!IN_PROGRESS_STATUS_LIST.includes(recording.status)) {
+    return false;
+  }
+  const timestamp = recording.updated_at || recording.created_at;
+  if (!timestamp) return false;
+  const lastUpdate = new Date(timestamp).getTime();
+  if (isNaN(lastUpdate)) return false;
+  return Date.now() - lastUpdate > timeoutMs;
+}
+
+/**
+ * Scans for orphaned/stale in-progress recordings on application startup.
+ * Transitions stuck records to 'failed' with descriptive status so the user can
+ * retry them. Race-condition safe: uses atomic conditional matching on (id, status, updated_at).
+ */
+export async function recoverStaleRecordings(timeoutMs: number = STALE_PROCESSING_TIMEOUT_MS): Promise<number> {
+  try {
+    const cutoffIso = new Date(Date.now() - timeoutMs).toISOString();
+
+    const { data: staleList, error } = await supabase
+      .from('meeting_recordings')
+      .select('id, status, updated_at')
+      .in('status', IN_PROGRESS_STATUS_LIST)
+      .lt('updated_at', cutoffIso);
+
+    if (error || !staleList || staleList.length === 0) {
+      return 0;
+    }
+
+    let recoveredCount = 0;
+    for (const rec of staleList) {
+      const { data: updated } = await supabase
+        .from('meeting_recordings')
+        .update({
+          status: 'failed',
+          last_error: `Processing timed out after ${Math.round(timeoutMs / 60000)} minutes. You can retry processing.`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', rec.id)
+        .eq('status', rec.status)
+        .eq('updated_at', rec.updated_at)
+        .select('id');
+
+      if (updated && updated.length > 0) {
+        recoveredCount++;
+      }
+    }
+
+    if (recoveredCount > 0) {
+      console.log(`[StaleRecovery] Recovered ${recoveredCount} orphaned recording(s).`);
+    }
+    return recoveredCount;
+  } catch (err) {
+    console.error('[StaleRecovery] Failed to recover stale recordings:', err);
+    return 0;
+  }
+}
+
+/**
+ * Defensively sanitize and validate an AI-generated task due date.
+ * Requirements:
+ * - Verify the value is actually a string before calling string methods.
+ * - Handle null and undefined.
+ * - Handle empty or whitespace-only strings.
+ * - Handle the string "null" (case-insensitive).
+ * - Do not crash if the AI produces a number, boolean, array, or object.
+ * - Preserve valid date strings that are not in the past relative to referenceDate (start of today).
+ * - Do not change the existing expected task behavior.
+ */
+export function sanitizeDueDate(dueDate: unknown, referenceDate: Date = new Date()): string | null {
+  if (dueDate === null || dueDate === undefined) {
+    return null;
+  }
+  if (typeof dueDate !== 'string') {
+    return null;
+  }
+  const trimmed = dueDate.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'null') {
+    return null;
+  }
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) {
+    return null;
+  }
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+  if (parsed < today) {
+    return null;
+  }
+  return trimmed;
+}
+
+// ---------------------------------------------------------------------------
 // Core processing helpers
 // ---------------------------------------------------------------------------
 
@@ -127,7 +250,6 @@ export const processAndSaveCall = async (
         call_id: callId,
         summary_text: res.analysis.summary,
         product: productDiscussed,
-        deal_stage: res.analysis.deal_stage,
         sentiment: res.analysis.sentiment
       });
 
@@ -141,13 +263,7 @@ export const processAndSaveCall = async (
       today.setHours(0, 0, 0, 0);
 
       const taskInserts = res.analysis.action_items.map(item => {
-        let cleanDueDate: string | null = null;
-        if (item.due_date && typeof item.due_date === 'string' && item.due_date.trim() && item.due_date.toLowerCase() !== 'null') {
-          const parsed = new Date(item.due_date);
-          if (!isNaN(parsed.getTime()) && parsed >= today) {
-            cleanDueDate = item.due_date;
-          }
-        }
+        const cleanDueDate = sanitizeDueDate(item.due_date, today);
 
         console.log('[DATABASE INSERT]', {
           title: item.title,
@@ -176,37 +292,6 @@ export const processAndSaveCall = async (
         console.error('Failed to create tasks from action items:', tasksError);
       } else {
         console.log('[DATABASE INSERT] ✓ Successfully inserted tasks into Supabase.');
-      }
-    }
-
-    // 8. Upsert Deals based on products discussed — all use the SAME resolved customerId
-    if (productDiscussed && res.analysis.deal_stage) {
-      const dealVal = (res.analysis as any).deal_value || null;
-
-      const { data: existingDeals } = await supabase
-        .from('deals')
-        .select('*')
-        .eq('customer_id', customerId)
-        .eq('product', productDiscussed);
-
-      if (existingDeals && existingDeals.length > 0) {
-        const updatePayload: any = { stage: res.analysis.deal_stage };
-        if (dealVal) updatePayload.value = dealVal;
-
-        await supabase
-          .from('deals')
-          .update(updatePayload)
-          .eq('id', existingDeals[0].id);
-      } else {
-        await supabase
-          .from('deals')
-          .insert({
-            customer_id: customerId, // Always the same resolved customer
-            owner_id: ownerId,
-            product: productDiscussed,
-            stage: res.analysis.deal_stage,
-            value: dealVal
-          });
       }
     }
 
@@ -390,36 +475,63 @@ export const autoProcessRecording = async (recording: MeetingRecording): Promise
     return;
   }
 
-  if (fresh.status !== 'uploaded') {
-    console.log(`[AutoProcess] Skipping ${recording.id} — status is '${fresh.status}', not 'uploaded'`);
+  // 1. Normal path: newly uploaded recording
+  if (fresh.status === 'uploaded') {
+    // Atomically claim the recording by transitioning to 'processing'.
+    // IMPORTANT: Supabase UPDATE with a condition that matches 0 rows returns
+    //   { data: [], error: null } — NOT an error.
+    // We must check that exactly one row was updated to know we won the claim.
+    const { data: claimData, error: claimErr } = await supabase
+      .from('meeting_recordings')
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .eq('id', recording.id)
+      .eq('status', 'uploaded') // Conditional — only matches if still 'uploaded'
+      .select('id');
+
+    if (claimErr || !claimData || claimData.length === 0) {
+      console.log(`[AutoProcess] Could not claim ${recording.id} — already claimed by another instance or status changed.`);
+      return;
+    }
+
+    console.log(`[AutoProcess] Starting automatic processing for recording ${recording.id}`);
+
+    try {
+      await processRecording(fresh as MeetingRecording);
+      console.log(`[AutoProcess] ✓ Completed processing for recording ${recording.id}`);
+    } catch (err: any) {
+      console.error(`[AutoProcess] ✗ Failed processing for recording ${recording.id}:`, err.message);
+      // Status is already updated by processRecording's catch block
+    }
     return;
   }
 
-  // Atomically claim the recording by transitioning to 'processing'.
-  // IMPORTANT: Supabase UPDATE with a condition that matches 0 rows returns
-  //   { data: [], error: null } — NOT an error.
-  // We must check that exactly one row was updated to know we won the claim.
-  const { data: claimData, error: claimErr } = await supabase
-    .from('meeting_recordings')
-    .update({ status: 'processing', updated_at: new Date().toISOString() })
-    .eq('id', recording.id)
-    .eq('status', 'uploaded') // Conditional — only matches if still 'uploaded'
-    .select('id');
+  // 2. Stale processing recovery path:
+  // If the recording was left in-progress beyond STALE_PROCESSING_TIMEOUT_MS
+  // (e.g. application crash or termination), transition it to 'failed' so it
+  // becomes eligible for manual retry by the user, without auto-retrying in a loop.
+  if (isRecordingStale(fresh)) {
+    console.warn(`[AutoProcess] Detected stale in-progress recording ${recording.id} (status: '${fresh.status}', last update: ${fresh.updated_at}). Transitioning to 'failed' for manual retry.`);
 
-  if (claimErr || !claimData || claimData.length === 0) {
-    console.log(`[AutoProcess] Could not claim ${recording.id} — already claimed by another instance or status changed.`);
+    // Atomic claim of stale record: match exact status and updated_at to prevent races
+    const { data: recoverData } = await supabase
+      .from('meeting_recordings')
+      .update({
+        status: 'failed',
+        last_error: `Previous processing timed out or was interrupted (status was '${fresh.status}'). Click Retry to reprocess.`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', recording.id)
+      .eq('status', fresh.status)
+      .eq('updated_at', fresh.updated_at)
+      .select('id');
+
+    if (recoverData && recoverData.length > 0) {
+      console.log(`[AutoProcess] ✓ Safely recovered stale recording ${recording.id} — ready for user retry.`);
+    }
     return;
   }
 
-  console.log(`[AutoProcess] Starting automatic processing for recording ${recording.id}`);
-
-  try {
-    await processRecording(fresh as MeetingRecording);
-    console.log(`[AutoProcess] ✓ Completed processing for recording ${recording.id}`);
-  } catch (err: any) {
-    console.error(`[AutoProcess] ✗ Failed processing for recording ${recording.id}:`, err.message);
-    // Status is already updated by processRecording's catch block
-  }
+  console.log(`[AutoProcess] Skipping ${recording.id} — status is '${fresh.status}' (not 'uploaded' and not stale)`);
 };
 
 // ---------------------------------------------------------------------------
@@ -472,7 +584,6 @@ async function _saveProcessedCall(
     call_id: callId,
     summary_text: res.analysis.summary,
     product: productDiscussed,
-    deal_stage: res.analysis.deal_stage,
     sentiment: res.analysis.sentiment
   });
 
@@ -480,11 +591,7 @@ async function _saveProcessedCall(
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const taskInserts = res.analysis.action_items.map(item => {
-      let cleanDueDate: string | null = null;
-      if (item.due_date && item.due_date.toLowerCase() !== 'null') {
-        const parsed = new Date(item.due_date);
-        if (!isNaN(parsed.getTime()) && parsed >= today) cleanDueDate = item.due_date;
-      }
+      const cleanDueDate = sanitizeDueDate(item.due_date, today);
       return {
         customer_id: customerId,
         call_id: callId,
@@ -495,28 +602,5 @@ async function _saveProcessedCall(
       };
     });
     await supabase.from('tasks').insert(taskInserts);
-  }
-
-  if (productDiscussed && res.analysis.deal_stage) {
-    const dealVal = (res.analysis as any).deal_value || null;
-    const { data: existingDeals } = await supabase
-      .from('deals')
-      .select('id')
-      .eq('customer_id', customerId)
-      .eq('product', productDiscussed);
-
-    if (existingDeals?.length) {
-      const updatePayload: any = { stage: res.analysis.deal_stage };
-      if (dealVal) updatePayload.value = dealVal;
-      await supabase.from('deals').update(updatePayload).eq('id', existingDeals[0].id);
-    } else {
-      await supabase.from('deals').insert({
-        customer_id: customerId,
-        owner_id: ownerId,
-        product: productDiscussed,
-        stage: res.analysis.deal_stage,
-        value: dealVal
-      });
-    }
   }
 }

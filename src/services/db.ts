@@ -1,10 +1,9 @@
 import { supabase } from '../supabase/client'
-import { Customer, Task, Deal } from '../types'
+import { Customer, Task } from '../types'
 
 export interface DashboardStats {
   totalCustomers: number;
   pendingTasksCount: number;
-  activeDealsCount: number;
   todayCallsCount: number;
 }
 
@@ -12,13 +11,6 @@ export interface DashboardData {
   stats: DashboardStats;
   recentCustomers: Customer[];
   pendingTasks: Task[];
-  activeDeals: Deal[];
-}
-
-export interface StageBreakdown {
-  stage: string;
-  count: number;
-  value: number;
 }
 
 export interface CallsPerDay {
@@ -74,13 +66,6 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     
     if (pendingTasksCountErr) throw handleDbError(pendingTasksCountErr, 'Unable to retrieve task statistics.');
 
-    // Active deals count (stages not won or lost)
-    const { count: activeDealsCount, error: activeDealsCountErr } = await supabase
-      .from('deals')
-      .select('*', { count: 'exact', head: true })
-      .not('stage', 'in', '("won","lost")');
-    
-    if (activeDealsCountErr) throw handleDbError(activeDealsCountErr, 'Unable to retrieve deal statistics.');
 
     // Today's calls count
     const { count: todayCallsCount, error: todayCallsCountErr } = await supabase
@@ -110,25 +95,14 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
     if (pendingTasksErr) throw handleDbError(pendingTasksErr, 'Unable to load pending tasks.');
 
-    // Active deals (stages not won or lost)
-    const { data: activeDeals, error: activeDealsErr } = await supabase
-      .from('deals')
-      .select('*, customer:customers(name)')
-      .not('stage', 'in', '("won","lost")')
-      .order('created_at', { ascending: false });
-
-    if (activeDealsErr) throw handleDbError(activeDealsErr, 'Unable to load active deals.');
-
     return {
       stats: {
         totalCustomers: customerCount || 0,
         pendingTasksCount: pendingTasksCount || 0,
-        activeDealsCount: activeDealsCount || 0,
         todayCallsCount: todayCallsCount || 0,
       },
       recentCustomers: recentCustomers || [],
       pendingTasks: pendingTasks || [],
-      activeDeals: activeDeals || [],
     };
   } catch (err: any) {
     throw err instanceof Error ? err : new Error('An unexpected error occurred while loading dashboard.');
@@ -174,30 +148,6 @@ export async function searchCallTranscripts(term: string): Promise<TranscriptSea
   return (data || []) as TranscriptSearchResult[];
 }
 
-/**
- * Aggregate deal count and total value per pipeline stage.
- */
-export async function fetchDealStageBreakdown(): Promise<StageBreakdown[]> {
-  const { data, error } = await supabase
-    .from('deals')
-    .select('stage, value');
-
-  if (error) throw handleDbError(error, 'Unable to load deal breakdown.');
-
-  const stages = ['prospecting', 'negotiation', 'closing', 'won', 'lost'];
-  const map = new Map<string, StageBreakdown>();
-  stages.forEach((stage) => map.set(stage, { stage, count: 0, value: 0 }));
-
-  (data || []).forEach((deal: any) => {
-    const entry = map.get(deal.stage);
-    if (entry) {
-      entry.count += 1;
-      entry.value += Number(deal.value) || 0;
-    }
-  });
-
-  return stages.map((stage) => map.get(stage)!);
-}
 
 /**
  * Count calls logged per day over the last `days` days (oldest first).

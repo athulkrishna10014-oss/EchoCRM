@@ -2,7 +2,7 @@ import win32com.client
 import os
 
 def generate_tts_wav():
-    out_dir = r'c:\Users\nived\OneDrive\Desktop\mini project\new\echocrm-extension\assets'
+    out_dir = os.path.dirname(os.path.abspath(__file__))
     os.makedirs(out_dir, exist_ok=True)
     wav_path = os.path.join(out_dir, 'recording-disclosure.wav')
 

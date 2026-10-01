@@ -1,6 +1,5 @@
 export type CallStatus = 'recording' | 'processing' | 'done';
 export type TaskStatus = 'pending' | 'done';
-export type DealStage = 'prospecting' | 'negotiation' | 'closing' | 'won' | 'lost';
 export type SentimentType = 'positive' | 'neutral' | 'negative';
 
 /** All valid status values for meeting_recordings.status */
@@ -75,7 +74,6 @@ export interface CallSummary {
   call_id: string;
   summary_text?: string;
   product?: string;
-  deal_stage?: DealStage;
   sentiment?: SentimentType;
   created_at: string;
 }
@@ -124,23 +122,10 @@ export interface Task {
   customer?: { name: string; phone?: string; email?: string; company?: string };
 }
 
-export interface Deal {
-  id: string;
-  customer_id: string;
-  owner_id: string;
-  product: string;
-  stage: DealStage;
-  expected_close_date?: string;
-  value: number;
-  created_at: string;
-  customer?: { name: string };
-}
 
 export interface AIAnalysisResult {
   summary: string;
   sentiment: SentimentType;
-  deal_stage: DealStage;
-  deal_value?: number;
   customer_intent: string;
   products_discussed: string[];
   action_items: Array<{

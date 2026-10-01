@@ -106,11 +106,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initCloud() {
   if (!window.supabaseClient) return;
   try {
+    const isConfigured = await window.supabaseClient.isConfigured();
+    if (!isConfigured) {
+      renderCloudNotConfigured();
+      return;
+    }
     const session = await window.supabaseClient.getValidSession();
     renderCloudState(session);
   } catch (e) {
     renderCloudState(null);
   }
+}
+
+function renderCloudNotConfigured() {
+  cloudIsSignedIn = false;
+  cloudSignedOut.classList.remove('hidden');
+  cloudSignedIn.classList.add('hidden');
+  cloudStatusBadge.textContent = 'CONFIG NEEDED';
+  cloudStatusBadge.className = 'platform-badge unverified';
+  showCloudError('Supabase config missing: run "npm run config:extension" to sync credentials.');
+  loadRecordingsList();
 }
 
 function renderCloudState(session) {

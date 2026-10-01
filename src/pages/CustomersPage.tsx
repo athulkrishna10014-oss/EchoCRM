@@ -77,28 +77,28 @@ export const CustomersPage: React.FC = () => {
       {/* 1. Page Header */}
       <div className="flex justify-between items-center select-none shrink-0">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">Customers</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage and track your customer directory</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#292522] font-display">Customers</h1>
+          <p className="text-xs text-[#817A72] mt-0.5">Manage and track your customer directory and relationship activity</p>
         </div>
         <button
           onClick={handleAddClick}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition active:scale-95 shadow-lg hover:shadow-brand-500/20"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#B85C38] hover:bg-[#a24f2f] text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-xs"
         >
-          <Plus className="w-4.5 h-4.5" />
+          <Plus className="w-4 h-4" />
           <span>Add Customer</span>
         </button>
       </div>
 
       {/* 2. Error Display Panel */}
       {error && (
-        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-xs shrink-0 animate-fadeIn">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#B94A48]/10 border border-[#B94A48]/20 text-[#B94A48] text-xs shrink-0 animate-fadeIn">
+          <AlertCircle className="w-4 h-4 text-[#B94A48] shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {/* 3. Search and Sort Filter Control */}
-      <div className="bg-slate-900/30 border border-slate-800/30 p-4 rounded-2xl shrink-0">
+      <div className="bg-[#FFFDF9] border border-[#E8E1D8] p-4 rounded-2xl shrink-0 shadow-xs">
         <CustomerSearch
           search={search}
           onSearchChange={setSearch}
@@ -121,34 +121,38 @@ export const CustomersPage: React.FC = () => {
 
       {/* 5. Pagination Toolbar */}
       {totalCount > 0 && (
-        <div className="flex items-center justify-between border-t border-slate-900/60 pt-4 px-1 select-none shrink-0">
-          <div className="text-xs text-slate-500">
-            Showing <span className="font-semibold text-slate-350">{customers.length}</span> of{' '}
-            <span className="font-semibold text-slate-350">{totalCount}</span> customers
+        <div className="flex items-center justify-between border-t border-[#E8E1D8] pt-4 px-1 select-none shrink-0">
+          <div className="text-xs text-[#817A72]">
+            Showing <span className="font-semibold text-[#292522]">{customers.length}</span> of{' '}
+            <span className="font-semibold text-[#292522]">{totalCount}</span> customers
           </div>
 
           <div className="flex items-center gap-4">
             {/* Page index stats */}
-            <span className="text-xs font-semibold text-slate-400">
-              Page <span className="text-white font-bold">{page}</span> of{' '}
-              <span className="text-slate-300 font-bold">{totalPages}</span>
+            <span className="text-xs font-semibold text-[#817A72]">
+              Page <span className="text-[#292522] font-bold">{page}</span> of{' '}
+              <span className="text-[#292522] font-bold">{totalPages}</span>
             </span>
 
             {/* Pagination Action Controls */}
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1 || loading}
-                className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-2 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#F0D8CA]/40 rounded-xl text-[#817A72] hover:text-[#292522] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
                 title="Previous Page"
+                aria-label="Previous Page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => setPage(p => p + 1)}
                 disabled={!hasNextPage || loading}
-                className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-2 bg-[#FFFDF9] border border-[#E8E1D8] hover:bg-[#F0D8CA]/40 rounded-xl text-[#817A72] hover:text-[#292522] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
                 title="Next Page"
+                aria-label="Next Page"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
